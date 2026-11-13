@@ -18,11 +18,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT",
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
-      ]
+        "READ_CONTACTS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ],
+      "package": "com.boardtracker.pegboard"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -59,7 +59,7 @@
         "projectId": "973c30f2-6ea6-494d-8a0d-f4e5e53ecf07"
       }
     },
-    "runtimeVersion": "exposdk:58.0.0",
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/973c30f2-6ea6-494d-8a0d-f4e5e53ecf07"
     }
