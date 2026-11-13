@@ -25,6 +25,25 @@ export default function Settings() {
   const [days, setDays] = useState(String(reminderDays(board)));
   const [template, setTemplate] = useState(reminderTemplate(board));
   const [rBusy, setRBusy] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+
+  async function changePassword() {
+    setPwError(null);
+    if (pw.length < 6) return setPwError('Use at least 6 characters.');
+    setPwBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw });
+      if (error) throw error;
+      setPw('');
+      toast('Password changed.');
+    } catch (e) {
+      setPwError(e instanceof Error ? e.message : 'Could not change it. Try again.');
+    } finally {
+      setPwBusy(false);
+    }
+  }
   const [rError, setRError] = useState<string | null>(null);
 
   async function saveReminders() {
@@ -165,6 +184,9 @@ export default function Settings() {
 
       <Label>Account</Label>
       <Text style={t.muted}>Signed in as {session?.user.email}</Text>
+      <Field label="New password" value={pw} onChangeText={setPw} secureTextEntry autoComplete="new-password" textContentType="newPassword" />
+      {pwError ? <Notice text={pwError} tone="late" /> : null}
+      <Button title="Change password" busy={pwBusy} onPress={changePassword} />
       <Button title="Sign out" onPress={() => supabase.auth.signOut()} />
       <Button
         title="Leave this board"
