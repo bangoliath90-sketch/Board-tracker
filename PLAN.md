@@ -72,9 +72,13 @@ money_collected  = Σ price of paid bags
 5. Owed, People and History screens.
 6. Push notifications, app lock, polish.
 
+## Resolved
+
+- **Due-date notifications** go to **every board member**.
+- **Undo take:** a bag marked as taken can be undone. It returns to the board and its grams go back to the pool.
+- **Currency:** USD only.
+- **Over-bagging:** if a new bag needs more grams than `available_to_bag`, the app shows a warning but lets you continue.
+
 ## Open questions
 
-- Who receives due-date notifications: every board member, or only the person who logged the bag?
-- Should a bag that was taken by mistake be undoable, so its grams go back to the pool?
-- Currency: USD only?
 - Should the board allow more than one row or "page" of pegs if there are many bags?
