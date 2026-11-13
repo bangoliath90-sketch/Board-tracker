@@ -15,7 +15,7 @@ A shared, mobile inventory tracker (Android + iPhone). The main screen is a pegb
 ## Decisions so far
 
 - **Units:** grams.
-- **Bag presets:** 2, 4, 6, 7, 14 and 28 g. Each preset has an editable default price, and every bag's price can still be typed by hand. Custom gram amounts are allowed.
+- **Bag presets:** 2 g = $20, 4 g = $40, 6 g = $60, 7 g = $70, 14 g = $100, 28 g = $150. Each preset has an editable default price, and every bag's price can still be typed by hand. Custom gram amounts are allowed.
 - **Liquid fill:** scaled so 28 g = a full bag (14 g = half, 2 g ≈ 7%).
 - **Payments:** paid or not paid, with no partial payments.
 - **Due dates:** push notification on the due date.
@@ -79,7 +79,7 @@ money_collected  = Σ price of paid bags
 - **Currency:** USD only.
 - **Over-bagging:** if a new bag needs more grams than `available_to_bag`, the app shows a warning but lets you continue.
 - **Many bags:** the board scrolls down.
-- **Taken but unpaid bags** stay on the board with a name tag (red when overdue) until they are paid.
+- **Taken but unpaid bags** leave the board and move to the Owed page. Once paid, they move to History.
 
 ## Open questions
 

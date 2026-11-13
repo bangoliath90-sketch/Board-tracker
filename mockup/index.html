@@ -227,7 +227,7 @@ const S = {
   tab: 'board',
   invite: 'PEG-4821',
   members: ['You', 'Chris', 'Dana'],
-  presets: [{g:2,price:20},{g:4,price:35},{g:6,price:50},{g:7,price:55},{g:14,price:100},{g:28,price:180}],
+  presets: [{g:2,price:20},{g:4,price:40},{g:6,price:60},{g:7,price:70},{g:14,price:100},{g:28,price:150}],
   people: [{id:'p1',name:'Jordan'},{id:'p2',name:'Sam'},{id:'p3',name:'Alex'},{id:'p4',name:'Riley'}],
   stock: [
     {id:'s1',kind:'restock',grams:448,cost:2600,note:'Starting inventory',date:day(-21)},
@@ -235,18 +235,18 @@ const S = {
     {id:'s3',kind:'adjust',grams:-1.5,cost:null,note:'Scale correction',date:day(-3)}
   ],
   bags: [
-    {id:'b1',grams:28,price:180,status:'board'},
+    {id:'b1',grams:28,price:150,status:'board'},
     {id:'b2',grams:14,price:100,status:'board'},
-    {id:'b3',grams:7,price:55,status:'taken',personId:'p1',takenAt:day(-9),due:day(-2)},
+    {id:'b3',grams:7,price:70,status:'taken',personId:'p1',takenAt:day(-9),due:day(-2)},
     {id:'b4',grams:14,price:100,status:'board'},
-    {id:'b5',grams:14,price:95,status:'taken',personId:'p2',takenAt:day(-4),due:day(3)},
-    {id:'b6',grams:7,price:55,status:'board'},
-    {id:'b7',grams:6,price:50,status:'board'},
-    {id:'b8',grams:4,price:35,status:'taken',personId:'p3',takenAt:day(-1),due:day(6)},
-    {id:'b9',grams:4,price:35,status:'board'},
+    {id:'b5',grams:14,price:100,status:'taken',personId:'p2',takenAt:day(-4),due:day(3)},
+    {id:'b6',grams:7,price:70,status:'board'},
+    {id:'b7',grams:6,price:60,status:'board'},
+    {id:'b8',grams:4,price:40,status:'taken',personId:'p3',takenAt:day(-1),due:day(6)},
+    {id:'b9',grams:4,price:40,status:'board'},
     {id:'b10',grams:2,price:20,status:'board'},
-    {id:'b11',grams:28,price:180,status:'paid',personId:'p4',takenAt:day(-8),paidAt:day(-4)},
-    {id:'b12',grams:7,price:55,status:'paid',personId:'p2',takenAt:day(-12),paidAt:day(-6)},
+    {id:'b11',grams:28,price:150,status:'paid',personId:'p4',takenAt:day(-8),paidAt:day(-4)},
+    {id:'b12',grams:7,price:70,status:'paid',personId:'p2',takenAt:day(-12),paidAt:day(-6)},
     {id:'b13',grams:2,price:20,status:'paid',personId:'p1',takenAt:day(-1),paidAt:day(-1)}
   ]
 };
@@ -314,7 +314,7 @@ function renderTabs(){
 
 function viewBoard(){
   const c = calc();
-  const bags = S.bags.filter(b => b.status !== 'paid');
+  const bags = S.bags.filter(b => b.status === 'board');
   const tiles = bags.map(b => {
     let tag = '', cls = '';
     if (b.status === 'taken') {
@@ -339,7 +339,7 @@ function viewBoard(){
     ${tiles}
     <button class="add-slot" data-action="new-bag"><span>+</span>New bag</button>
   </div></div>
-  <p class="board-note">Tap a bag to open it. Liquid shows grams, and 28 g fills a bag. Bags with a tag have been taken and are still owed. Paid bags move to History.</p>`;
+  <p class="board-note">Tap a bag to open it. Liquid shows grams, and 28 g fills a bag. When someone takes a bag and still owes, it moves to Owed. Paid bags move to History.</p>`;
 }
 
 function viewOwed(){
@@ -612,7 +612,7 @@ document.addEventListener('click', e => {
       b.personId = pid; b.price = parseFloat($('#tkPrice').value) || 0; b.takenAt = iso(today); b.notes = $('#tkNotes').value.trim();
       const name = person(pid).name;
       if (sheetState.payMode === 'paid') { b.status = 'paid'; b.paidAt = iso(today); b.due = null; after(`${name} paid ${usd(b.price)}. ${g(b.grams)} came off your stock, and the bag moved to History.`); }
-      else { b.status = 'taken'; b.due = $('#tkDue').value || null; after(`${name} owes ${usd(b.price)}. ${g(b.grams)} came off your stock.`); }
+      else { b.status = 'taken'; b.due = $('#tkDue').value || null; after(`${name} owes ${usd(b.price)}. ${g(b.grams)} came off your stock, and the bag moved to Owed.`); }
       break;
     }
     case 'remove-bag': {
