@@ -1,9 +1,10 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { Alert, Share, Text, View } from 'react-native';
+import { Alert, Share, Switch, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { useBoard } from '../lib/board';
+import { useLock } from '../lib/lock';
 import { addDays, parseAmount } from '../lib/format';
 import { reminderDays, reminderMessage, reminderTemplate } from '../lib/reminders';
 import { supabase } from '../lib/supabase';
@@ -14,6 +15,7 @@ export default function Settings() {
   const t = useText();
   const toast = useToast();
   const { session } = useAuth();
+  const lock = useLock();
   const { board, members, presets, savePresets, saveReminderSettings, leaveBoard } = useBoard();
   const [prices, setPrices] = useState<Record<number, string>>(() =>
     Object.fromEntries(presets.map((p) => [p.grams, String(p.default_price)])),
@@ -136,6 +138,29 @@ export default function Settings() {
             <Pill text="Full access" />
           </Row>
         ))}
+      </Card>
+
+      <Label>App lock</Label>
+      <Card>
+        <Row last>
+          <View style={{ flex: 1 }}>
+            <Text style={t.strong}>Require {lock.method}</Text>
+            <Text style={t.muted}>
+              {lock.available
+                ? `Asks for ${lock.method} when you open the app, and after it has been closed for a minute.`
+                : 'Set up Face ID, a fingerprint or a passcode in your phone Settings to use the lock.'}
+            </Text>
+          </View>
+          <Switch
+            value={lock.available && lock.enabled}
+            disabled={!lock.available}
+            onValueChange={async (on) => {
+              if (await lock.setEnabled(on)) toast(on ? 'App lock is on.' : 'App lock is off.');
+            }}
+            trackColor={{ true: c.accent, false: c.line }}
+            accessibilityLabel="App lock"
+          />
+        </Row>
       </Card>
 
       <Label>Account</Label>

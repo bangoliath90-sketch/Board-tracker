@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Button, ToastProvider } from '../components/ui';
 import { AuthProvider, useAuth } from '../lib/auth';
 import { BoardProvider, useBoard } from '../lib/board';
+import { LockProvider } from '../lib/lock';
 import { supabase } from '../lib/supabase';
 import { useColors } from '../lib/theme';
 
@@ -14,7 +15,9 @@ export default function RootLayout() {
       <AuthProvider>
         <BoardProvider>
           <ToastProvider>
-            <Navigation />
+            <LockProvider>
+              <Navigation />
+            </LockProvider>
           </ToastProvider>
         </BoardProvider>
       </AuthProvider>
