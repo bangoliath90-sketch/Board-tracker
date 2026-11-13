@@ -1,0 +1,696 @@
+<title>Pegboard Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one phone-width column. A wooden pegboard hangs in the middle with bags on pegs; a tab bar sits at the bottom; detail screens slide up as sheets. */
+:root{
+  --bg:#E8EBEE; --surface:#FFFFFF; --surface-2:#F3F5F7; --ink:#1B2027; --muted:#5C6773; --line:#D3D9DF;
+  --accent:#0C7F6E; --accent-ink:#FFFFFF;
+  --liquid:#1AAE96; --liquid-deep:#0B6F61;
+  --board:#C79E70; --board-hole:#6F4E30; --board-frame:#8A6340;
+  --film:rgba(255,255,255,.62); --bag-stroke:#7E8B97; --zip:#DDE3E8; --zip-line:#A9B4BE; --peg:#B8C0C8;
+  --tag:#FFF7DE; --tag-ink:#4A3A12;
+  --ok:#24804F; --ok-bg:#DDF2E5; --warn:#9A5B00; --warn-bg:#FCEFD3; --danger:#B8392A; --danger-bg:#FBE1DC;
+  --scrim:rgba(15,20,26,.45); --shadow:0 10px 30px rgba(20,28,38,.18);
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101419; --surface:#1A2027; --surface-2:#222932; --ink:#E6EBF0; --muted:#97A3AF; --line:#2E3740;
+  --accent:#2CC4AA; --accent-ink:#06211C;
+  --liquid:#27C2A7; --liquid-deep:#11806F;
+  --board:#6E5235; --board-hole:#2E2114; --board-frame:#4A3522;
+  --film:rgba(255,255,255,.22); --bag-stroke:#AAB5C0; --zip:#3A444E; --zip-line:#5A6672; --peg:#8D98A3;
+  --tag:#3B3420; --tag-ink:#F4E6BC;
+  --ok:#5FD08F; --ok-bg:#16301F; --warn:#F2B24C; --warn-bg:#35280F; --danger:#FF7A66; --danger-bg:#3A1A15;
+  --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#101419; --surface:#1A2027; --surface-2:#222932; --ink:#E6EBF0; --muted:#97A3AF; --line:#2E3740;
+  --accent:#2CC4AA; --accent-ink:#06211C;
+  --liquid:#27C2A7; --liquid-deep:#11806F;
+  --board:#6E5235; --board-hole:#2E2114; --board-frame:#4A3522;
+  --film:rgba(255,255,255,.22); --bag-stroke:#AAB5C0; --zip:#3A444E; --zip-line:#5A6672; --peg:#8D98A3;
+  --tag:#3B3420; --tag-ink:#F4E6BC;
+  --ok:#5FD08F; --ok-bg:#16301F; --warn:#F2B24C; --warn-bg:#35280F; --danger:#FF7A66; --danger-bg:#3A1A15;
+  --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:480px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:12px calc(92px + env(safe-area-inset-bottom, 0px))}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* Header */
+.top{display:flex;align-items:center;gap:10px;padding-block:6px 14px}
+.brand{flex:1;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:-.01em;margin:0;line-height:1.05}
+.brand small{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12.5px}
+.chip-mock{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;background:var(--warn-bg);color:var(--warn);padding:2px 7px;border-radius:99px;font-weight:600}
+.icon-btn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.icon-btn svg{width:20px;height:20px;stroke:var(--ink);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.stat .v{font-family:var(--f-mono);font-weight:700;font-size:21px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat.owed .v{color:var(--danger)} .stat.paid .v{color:var(--ok)}
+.avail{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);margin:0 2px 12px}
+.avail b{color:var(--ink);font-family:var(--f-mono)}
+
+/* Pegboard */
+.board{background-color:var(--board);background-image:radial-gradient(circle at 11px 11px, var(--board-hole) 0 2.3px, transparent 2.8px);background-size:22px 22px;border:7px solid var(--board-frame);border-radius:10px;box-shadow:inset 0 3px 10px rgba(0,0,0,.28), var(--shadow);padding:16px 10px 20px}
+.board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 10px}
+.bag{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:4px;transform-origin:50% 6%;transition:transform .25s ease}
+.bag:hover{transform:rotate(-2.5deg)}
+.bag:active{transform:rotate(2deg) scale(.98)}
+.bag-svg{width:100%;max-width:112px;height:auto;display:block;filter:drop-shadow(0 4px 4px rgba(0,0,0,.22))}
+.bag-body{fill:var(--film);stroke:var(--bag-stroke);stroke-width:1.5}
+.liquid{fill:var(--liquid)} .w2 .liquid{fill:var(--liquid-deep);opacity:.6}
+.zip{fill:var(--zip);stroke:var(--bag-stroke);stroke-width:1.5}
+.zip-line{stroke:var(--zip-line);stroke-width:2.2}
+.hole{fill:var(--board-hole)} .peg{fill:var(--peg)}
+.shine{stroke:rgba(255,255,255,.55);stroke-width:3;stroke-linecap:round;fill:none}
+.bag.overdue .bag-body{stroke:var(--danger);stroke-width:3}
+.wave{animation:wave 3.2s linear infinite}
+.w2{animation-duration:4.8s;animation-direction:reverse}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(50px)}}
+@media (prefers-reduced-motion: reduce){.wave{animation:none}.bag,.bag:hover{transition:none;transform:none}}
+.bag-meta{display:flex;gap:6px;align-items:baseline;background:rgba(255,255,255,.85);color:#1B2027;border-radius:6px;padding:1px 7px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.bag-meta .g{font-family:var(--f-mono);font-weight:700;font-size:13px}
+.bag-meta .p{font-size:12px;color:#4B5560}
+.tag{display:inline-block;max-width:100%;text-align:center;line-height:1.25;overflow-wrap:anywhere;font-size:11px;font-weight:600;background:var(--tag);color:var(--tag-ink);padding:2px 8px;border-radius:3px 9px 9px 3px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tag.danger{background:var(--danger);color:#fff} .tag.warn{background:var(--warn-bg);color:var(--warn)}
+.add-slot{border:2px dashed rgba(255,255,255,.7);border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:150px;font-weight:600;font-size:13px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.add-slot span{font-size:30px;line-height:1}
+.board-note{font-size:12.5px;color:var(--muted);margin:10px 2px 0}
+
+/* Generic lists & sections */
+.section-h{font-family:var(--f-display);font-weight:800;font-size:22px;margin:4px 0 4px}
+.lead{color:var(--muted);font-size:13.5px;margin:0 0 14px;max-width:60ch}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}
+.row:last-child{border-bottom:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-weight:600}
+.row .s{font-size:12.5px;color:var(--muted)}
+.row .r{text-align:right;flex-shrink:0}
+.mini{width:30px;flex-shrink:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.pill.danger{background:var(--danger-bg);color:var(--danger)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.ok{background:var(--ok-bg);color:var(--ok)}
+.empty{padding:22px 16px;text-align:center;color:var(--muted);font-size:14px}
+.banner{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.banner svg{width:18px;height:18px;flex-shrink:0;stroke:var(--accent);fill:none;stroke-width:1.8;margin-top:1px}
+.big-total{display:flex;align-items:baseline;gap:8px;margin:0 0 12px}
+.big-total .v{font-family:var(--f-mono);font-weight:700;font-size:34px}
+.big-total .k{color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.search{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:12px}
+.breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.plus{color:var(--ok)} .minus{color:var(--danger)}
+
+/* Buttons & form */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;font-weight:600;font-size:14.5px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.warnb{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.ghost-danger{color:var(--danger);border-color:var(--danger-bg);background:var(--danger-bg)}
+.btn.block{width:100%}
+.btn[data-armed="1"]{background:var(--danger);border-color:var(--danger);color:#fff}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.field label,.flabel{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.input{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font-size:16px}
+.input.num{font-family:var(--f-mono)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.pchip{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:8px 0;width:calc((100% - 16px)/3);display:flex;flex-direction:column;align-items:center;line-height:1.2}
+.pchip b{font-family:var(--f-mono);font-size:17px}
+.pchip small{color:var(--muted);font-size:12px}
+.pchip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+.pchip[aria-pressed="true"] small{color:var(--accent-ink);opacity:.85}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:9px;padding:9px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.seg button.owes[aria-pressed="true"]{color:var(--danger)} .seg button.paid[aria-pressed="true"]{color:var(--ok)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:40px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);font-size:20px}
+.stepper input{text-align:center}
+.warnbox{background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13.5px;margin-bottom:14px}
+.errbox{color:var(--danger);font-size:13px;margin-top:-8px;margin-bottom:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin-bottom:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-weight:600}
+
+/* Sheet */
+.sheet-wrap{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:var(--scrim)}
+.sheet{position:relative;width:100%;max-width:480px;max-height:90%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow);padding-left:max(18px, env(safe-area-inset-left, 0px));padding-right:max(18px, env(safe-area-inset-right, 0px));padding-block:10px calc(20px + env(safe-area-inset-bottom, 0px));animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.sheet{animation:none}}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 10px}
+.sheet-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sheet-h h2{flex:1;margin:0;font-family:var(--f-display);font-weight:800;font-size:22px}
+.bag-hero{display:flex;gap:16px;align-items:center;background:var(--board);background-image:radial-gradient(circle at 11px 11px, var(--board-hole) 0 2.3px, transparent 2.8px);background-size:22px 22px;border-radius:14px;padding:12px 16px;margin-bottom:16px}
+.bag-hero .bag-svg{width:96px}
+.bag-hero .info{background:rgba(255,255,255,.9);color:#1B2027;border-radius:10px;padding:8px 12px;min-width:0}
+.bag-hero .info .g{font-family:var(--f-mono);font-weight:700;font-size:26px;line-height:1.1}
+.bag-hero .info .s{font-size:13px;color:#4B5560}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px));padding-bottom:env(safe-area-inset-bottom, 0px)}
+.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 9px;font-size:11px;font-weight:600;color:var(--muted);position:relative}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab .badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--danger);color:#fff;font-size:10px;border-radius:99px;padding:0 5px;line-height:16px}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;font-size:13.5px;max-width:min(440px, calc(100% - 32px));box-shadow:var(--shadow)}
+
+/* Lock */
+.lock{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px))}
+.lock h2{font-family:var(--f-display);font-weight:800;margin:0;font-size:24px}
+.lock p{margin:0;color:var(--muted);font-size:13px;text-align:center}
+.dots{display:flex;gap:14px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink)}
+.dots i.on{background:var(--ink)}
+.keypad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.keypad button{height:72px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-size:26px;font-family:var(--f-mono)}
+.keypad button.txt{font-family:var(--f-body);font-size:13px;font-weight:600;border-color:transparent;background:none}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Pegboard</h1>
+      <small><span>Shared board · 3 members</span><span class="chip-mock">Mockup</span></small>
+    </div>
+    <button class="icon-btn" data-action="lock" aria-label="Preview the lock screen"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button>
+    <button class="icon-btn" data-action="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-in" id="tabs"></div>
+</nav>
+
+<div class="sheet-wrap" id="sheetWrap" hidden>
+  <div class="scrim" data-action="close"></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true"></section>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="lock" id="lock" hidden></div>
+
+<script>
+(function(){
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = new Date(); today.setHours(0,0,0,0);
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const day = n => { const d = new Date(today); d.setDate(d.getDate()+n); return iso(d); };
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const diffDays = s => Math.round((parse(s) - today) / 864e5);
+const niceDate = s => parse(s).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+const r1 = n => Math.round(n*10)/10;
+const g = n => `${r1(n).toLocaleString('en-US')} g`;
+const usd = n => n.toLocaleString('en-US', {style:'currency', currency:'USD', minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2});
+let uid = 100; const nid = p => p + (++uid);
+
+/* ---------- sample data ---------- */
+const S = {
+  tab: 'board',
+  invite: 'PEG-4821',
+  members: ['You', 'Chris', 'Dana'],
+  presets: [{g:2,price:20},{g:4,price:35},{g:6,price:50},{g:7,price:55},{g:14,price:100},{g:28,price:180}],
+  people: [{id:'p1',name:'Jordan'},{id:'p2',name:'Sam'},{id:'p3',name:'Alex'},{id:'p4',name:'Riley'}],
+  stock: [
+    {id:'s1',kind:'restock',grams:448,cost:2600,note:'Starting inventory',date:day(-21)},
+    {id:'s2',kind:'restock',grams:112,cost:650,note:'',date:day(-6)},
+    {id:'s3',kind:'adjust',grams:-1.5,cost:null,note:'Scale correction',date:day(-3)}
+  ],
+  bags: [
+    {id:'b1',grams:28,price:180,status:'board'},
+    {id:'b2',grams:14,price:100,status:'board'},
+    {id:'b3',grams:7,price:55,status:'taken',personId:'p1',takenAt:day(-9),due:day(-2)},
+    {id:'b4',grams:14,price:100,status:'board'},
+    {id:'b5',grams:14,price:95,status:'taken',personId:'p2',takenAt:day(-4),due:day(3)},
+    {id:'b6',grams:7,price:55,status:'board'},
+    {id:'b7',grams:6,price:50,status:'board'},
+    {id:'b8',grams:4,price:35,status:'taken',personId:'p3',takenAt:day(-1),due:day(6)},
+    {id:'b9',grams:4,price:35,status:'board'},
+    {id:'b10',grams:2,price:20,status:'board'},
+    {id:'b11',grams:28,price:180,status:'paid',personId:'p4',takenAt:day(-8),paidAt:day(-4)},
+    {id:'b12',grams:7,price:55,status:'paid',personId:'p2',takenAt:day(-12),paidAt:day(-6)},
+    {id:'b13',grams:2,price:20,status:'paid',personId:'p1',takenAt:day(-1),paidAt:day(-1)}
+  ]
+};
+
+/* ---------- inventory math ---------- */
+const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+const calc = () => {
+  const out = S.bags.filter(b => b.status !== 'board');
+  const onHand = sum(S.stock, s => s.grams) - sum(out, b => b.grams);
+  const onBoard = sum(S.bags.filter(b => b.status === 'board'), b => b.grams);
+  return {
+    onHand, onBoard, available: onHand - onBoard,
+    givenOut: sum(out, b => b.grams),
+    owed: sum(S.bags.filter(b => b.status === 'taken'), b => b.price),
+    collected: sum(S.bags.filter(b => b.status === 'paid'), b => b.price)
+  };
+};
+const person = id => S.people.find(p => p.id === id);
+const bagById = id => S.bags.find(b => b.id === id);
+const due = b => {
+  if (!b.due) return {label:'No due date', cls:''};
+  const d = diffDays(b.due);
+  if (d < 0) return {label: `${-d} day${d === -1 ? '' : 's'} overdue`, short: `${-d}d overdue`, cls:'danger'};
+  if (d === 0) return {label:'Due today', short:'due today', cls:'warn'};
+  if (d === 1) return {label:'Due tomorrow', short:'due tmrw', cls:'warn'};
+  return {label:`Due in ${d} days · ${niceDate(b.due)}`, short:`due ${niceDate(b.due)}`, cls: d <= 3 ? 'warn' : ''};
+};
+
+/* ---------- bag drawing ---------- */
+let svgN = 0;
+function bagSVG(grams){
+  const id = 'c' + (++svgN);
+  const top = 26, bottom = 136, inner = bottom - top - 10;
+  const f = Math.min(Math.max(grams, 0) / 28, 1);
+  const y = bottom - 4 - f * inner;
+  const body = `M14 ${top} H86 V${bottom-16} Q86 ${bottom} 70 ${bottom} H30 Q14 ${bottom} 14 ${bottom-16} Z`;
+  const wave = yy => `M-50 ${yy}` + ' q12.5 -5 25 0 t25 0'.repeat(1) + ' t25 0'.repeat(9) + ` V150 H-50 Z`;
+  const liquid = f > 0 ? `<g class="wave w2"><path class="liquid" d="${wave(y-3)}"/></g><g class="wave"><path class="liquid" d="${wave(y)}"/></g>` : '';
+  return `<svg class="bag-svg" viewBox="0 0 100 142" aria-hidden="true">
+    <defs><clipPath id="${id}"><path d="${body}"/></clipPath></defs>
+    <path class="bag-body" d="${body}"/>
+    <g clip-path="url(#${id})">${liquid}</g>
+    <path class="shine" d="M22 ${top+10} V${bottom-24}"/>
+    <rect class="zip" x="10" y="3" width="80" height="25" rx="3"/>
+    <line class="zip-line" x1="12" y1="23" x2="88" y2="23"/>
+    <circle class="hole" cx="50" cy="12" r="5.5"/><circle class="peg" cx="50" cy="12" r="3.2"/>
+  </svg>`;
+}
+
+/* ---------- views ---------- */
+const TABS = [
+  ['board','Board','<path d="M4 4h16v16H4z"/><circle cx="9" cy="9" r=".6"/><circle cx="15" cy="9" r=".6"/><circle cx="9" cy="15" r=".6"/><circle cx="15" cy="15" r=".6"/>'],
+  ['owed','Owed','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
+  ['people','People','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.8.7 3 2.4 3.5 5.2"/>'],
+  ['stock','Stock','<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>'],
+  ['history','History','<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 8v4l3 2"/>']
+];
+function renderTabs(){
+  const overdue = S.bags.filter(b => b.status === 'taken' && b.due && diffDays(b.due) < 0).length;
+  $('#tabs').innerHTML = TABS.map(([k, label, icon]) =>
+    `<button class="tab" data-action="tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ''}>
+      <svg viewBox="0 0 24 24">${icon}</svg>${label}${k === 'owed' && overdue ? `<span class="badge">${overdue}</span>` : ''}
+    </button>`).join('');
+}
+
+function viewBoard(){
+  const c = calc();
+  const bags = S.bags.filter(b => b.status !== 'paid');
+  const tiles = bags.map(b => {
+    let tag = '', cls = '';
+    if (b.status === 'taken') {
+      const d = due(b); cls = d.cls === 'danger' ? 'overdue' : '';
+      tag = `<span class="tag ${d.cls}">${esc(person(b.personId)?.name)}<br><span style="font-weight:500">${b.due ? d.short : 'owes'}</span></span>`;
+    }
+    const label = `${g(b.grams)} bag, ${usd(b.price)}` + (b.status === 'taken' ? `, taken by ${person(b.personId)?.name}` : ', on the board');
+    return `<button class="bag ${cls}" data-action="bag" data-id="${b.id}" aria-label="${esc(label)}">
+      ${bagSVG(b.grams)}
+      <span class="bag-meta"><span class="g">${g(b.grams)}</span><span class="p">${usd(b.price)}</span></span>${tag}
+    </button>`;
+  }).join('');
+  return `
+  <section class="stats" aria-label="Totals">
+    <div class="stat"><div class="k">On hand</div><div class="v">${g(c.onHand)}</div></div>
+    <div class="stat"><div class="k">Bagged on board</div><div class="v">${g(c.onBoard)}</div></div>
+    <div class="stat owed"><div class="k">Owed to you</div><div class="v">${usd(c.owed)}</div></div>
+    <div class="stat paid"><div class="k">Collected</div><div class="v">${usd(c.collected)}</div></div>
+  </section>
+  <div class="avail"><span>Unbagged, ready to portion</span><b>${g(c.available)}</b></div>
+  <div class="board"><div class="board-grid">
+    ${tiles}
+    <button class="add-slot" data-action="new-bag"><span>+</span>New bag</button>
+  </div></div>
+  <p class="board-note">Tap a bag to open it. Liquid shows grams, and 28 g fills a bag. Bags with a tag have been taken and are still owed. Paid bags move to History.</p>`;
+}
+
+function viewOwed(){
+  const c = calc();
+  const owed = S.bags.filter(b => b.status === 'taken').sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  return `
+  <h2 class="section-h">Owed</h2>
+  <div class="big-total"><span class="v ${c.owed ? 'minus' : ''}">${usd(c.owed)}</span><span class="k">across ${owed.length} bag${owed.length === 1 ? '' : 's'}</span></div>
+  <div class="banner"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    <span>On each due date, a reminder goes to everyone on this board: ${S.members.map(esc).join(', ')}.</span></div>
+  <div class="list">${owed.length ? owed.map(b => {
+    const d = due(b);
+    return `<button class="row" data-action="bag" data-id="${b.id}">
+      <span class="mini">${bagSVG(b.grams)}</span>
+      <span class="main"><span class="t">${esc(person(b.personId)?.name)}</span><br><span class="s">${g(b.grams)} · taken ${niceDate(b.takenAt)}</span></span>
+      <span class="r"><span class="num" style="font-weight:700">${usd(b.price)}</span><br><span class="pill ${d.cls}">${d.label.split(' · ')[0]}</span></span>
+    </button>`; }).join('') : '<div class="empty">Nobody owes you anything right now.</div>'}</div>`;
+}
+
+function viewPeople(){
+  const rows = S.people.map(p => {
+    const mine = S.bags.filter(b => b.personId === p.id);
+    const owe = sum(mine.filter(b => b.status === 'taken'), b => b.price);
+    const late = mine.some(b => b.status === 'taken' && b.due && diffDays(b.due) < 0);
+    return {p, owe, late, n: mine.length};
+  }).sort((a, b) => b.owe - a.owe || a.p.name.localeCompare(b.p.name));
+  return `
+  <h2 class="section-h">People</h2>
+  <p class="lead">Everyone who has grabbed a bag. Tap a name to see what they owe and their history.</p>
+  <div class="actions"><button class="btn primary" data-action="person-new">Add person</button></div>
+  <div class="list">${rows.map(({p, owe, late, n}) => `
+    <button class="row" data-action="person" data-id="${p.id}">
+      <span class="main"><span class="t">${esc(p.name)}</span><br><span class="s">${n} bag${n === 1 ? '' : 's'} total</span></span>
+      <span class="r">${owe ? `<span class="pill ${late ? 'danger' : 'warn'}">Owes ${usd(owe)}</span>` : '<span class="pill ok">Paid up</span>'}</span>
+    </button>`).join('')}</div>`;
+}
+
+function viewStock(){
+  const c = calc();
+  const log = [...S.stock].sort((a, b) => b.date.localeCompare(a.date));
+  return `
+  <h2 class="section-h">Inventory</h2>
+  <div class="big-total"><span class="v">${g(c.onHand)}</span><span class="k">on hand</span></div>
+  <div class="breakdown">
+    <div class="stat"><div class="k">Unbagged</div><div class="v" style="font-size:17px">${g(c.available)}</div></div>
+    <div class="stat"><div class="k">On board</div><div class="v" style="font-size:17px">${g(c.onBoard)}</div></div>
+    <div class="stat"><div class="k">Given out</div><div class="v" style="font-size:17px">${g(c.givenOut)}</div></div>
+  </div>
+  <p class="lead">On hand goes down only when someone takes a bag. Undoing a take puts the grams back.</p>
+  <div class="actions"><button class="btn primary" data-action="stock-new" data-kind="restock">Add restock</button><button class="btn" data-action="stock-new" data-kind="adjust">Adjust</button></div>
+  <div class="list">${log.map(s => `
+    <div class="row">
+      <span class="main"><span class="t">${s.kind === 'restock' ? 'Restock' : 'Adjustment'}${s.note ? ` · <span style="font-weight:400">${esc(s.note)}</span>` : ''}</span><br>
+      <span class="s">${niceDate(s.date)}${s.cost ? ` · paid ${usd(s.cost)}` : ''}</span></span>
+      <span class="r num ${s.grams >= 0 ? 'plus' : 'minus'}" style="font-weight:700">${s.grams >= 0 ? '+' : '−'}${g(Math.abs(s.grams))}</span>
+    </div>`).join('')}</div>`;
+}
+
+let histQuery = '';
+function viewHistory(){
+  const c = calc();
+  const q = histQuery.trim().toLowerCase();
+  const paid = S.bags.filter(b => b.status === 'paid' && (!q || (person(b.personId)?.name || '').toLowerCase().includes(q)))
+    .sort((a, b) => b.paidAt.localeCompare(a.paidAt));
+  return `
+  <h2 class="section-h">History</h2>
+  <div class="big-total"><span class="v plus">${usd(c.collected)}</span><span class="k">collected</span></div>
+  <input class="search" id="histSearch" type="search" placeholder="Search by name" value="${esc(histQuery)}" aria-label="Search history by name">
+  <div class="list" id="histList">${paid.length ? paid.map(b => `
+    <button class="row" data-action="bag" data-id="${b.id}">
+      <span class="mini">${bagSVG(b.grams)}</span>
+      <span class="main"><span class="t">${esc(person(b.personId)?.name)}</span><br><span class="s">${g(b.grams)} · paid ${niceDate(b.paidAt)}</span></span>
+      <span class="r num plus" style="font-weight:700">${usd(b.price)}</span>
+    </button>`).join('') : '<div class="empty">No paid bags match.</div>'}</div>`;
+}
+
+const VIEWS = {board: viewBoard, owed: viewOwed, people: viewPeople, stock: viewStock, history: viewHistory};
+function render(){ $('#view').innerHTML = VIEWS[S.tab](); renderTabs(); }
+
+/* ---------- sheets ---------- */
+let sheetState = {};
+function openSheet(html, st = {}){
+  sheetState = st;
+  $('#sheet').innerHTML = `<div class="grab"></div>${html}`;
+  $('#sheetWrap').hidden = false;
+  document.body.style.overflow = 'hidden';
+  const f = $('#sheet').querySelector('input,select,button:not([data-action="close"])');
+  if (f && !st.noFocus) f.focus({preventScroll:true});
+}
+function closeSheet(){ $('#sheetWrap').hidden = true; document.body.style.overflow = ''; sheetState = {}; }
+const sheetHead = title => `<div class="sheet-h"><h2>${title}</h2><button class="icon-btn" data-action="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200);
+}
+
+/* New bag */
+function openNewBag(){
+  const p = S.presets.find(x => x.g === 7) || S.presets[0];
+  openSheet(`${sheetHead('New bag')}
+    <div class="field"><span class="flabel">Preset size</span>
+      <div class="chips" id="nbChips">${S.presets.map(x => `<button type="button" class="pchip" data-action="preset" data-g="${x.g}" aria-pressed="${x.g === p.g}"><b>${x.g} g</b><small>${usd(x.price)}</small></button>`).join('')}</div></div>
+    <div class="two">
+      <div class="field"><label for="nbG">Grams</label><input class="input num" id="nbG" type="number" inputmode="decimal" min="0.1" step="0.1" value="${p.g}"></div>
+      <div class="field"><label for="nbPrice">Price ($)</label><input class="input num" id="nbPrice" type="number" inputmode="decimal" min="0" step="1" value="${p.price}"></div>
+    </div>
+    <div class="field"><label for="nbQty">How many bags</label>
+      <div class="stepper"><button type="button" data-action="qty" data-d="-1" aria-label="One fewer">−</button><input class="input num" id="nbQty" type="number" min="1" max="50" value="1"><button type="button" data-action="qty" data-d="1" aria-label="One more">+</button></div></div>
+    <div id="nbWarn"></div>
+    <button class="btn primary block" id="nbHang" data-action="hang">Hang on board</button>`, {noFocus:true});
+  updateNb();
+}
+function updateNb(){
+  const gr = parseFloat($('#nbG').value) || 0, qty = Math.max(1, parseInt($('#nbQty').value) || 1);
+  const need = gr * qty, avail = calc().available;
+  $('#nbChips').querySelectorAll('.pchip').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.g === gr)));
+  const over = need > avail + 1e-9;
+  $('#nbWarn').innerHTML = over ? `<div class="warnbox">This needs <b>${g(need)}</b>, but only <b>${g(Math.max(avail,0))}</b> is unbagged. You can still hang it, and your numbers will show the shortfall.</div>` : '';
+  const btn = $('#nbHang'); btn.className = 'btn block ' + (over ? 'warnb' : 'primary');
+  btn.textContent = over ? `Hang anyway` : `Hang ${qty > 1 ? qty + ' bags' : 'on board'}`;
+}
+
+/* Bag detail */
+function openBag(id){
+  const b = bagById(id); if (!b) return;
+  const pname = person(b.personId)?.name;
+  const hero = `<div class="bag-hero">${bagSVG(b.grams)}<div class="info"><div class="g">${g(b.grams)}</div><div class="s">${usd(b.price)} · ${b.status === 'board' ? 'On the board' : b.status === 'taken' ? 'Taken, owes' : 'Paid'}</div></div></div>`;
+  if (b.status === 'board') {
+    openSheet(`${sheetHead('Bag on the board')}${hero}
+      <div class="field"><label for="tkPerson">Who grabbed it?</label>
+        <select class="input" id="tkPerson"><option value="">Choose a person…</option>${S.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}<option value="__new">+ Add new person</option></select></div>
+      <div class="field" id="tkNewWrap" hidden><label for="tkNew">New person's name</label><input class="input" id="tkNew" autocomplete="off"></div>
+      <div id="tkErr"></div>
+      <div class="field"><label for="tkPrice">Price ($)</label><input class="input num" id="tkPrice" type="number" inputmode="decimal" min="0" value="${b.price}"></div>
+      <div class="field"><span class="flabel">Payment</span>
+        <div class="seg" id="tkSeg"><button type="button" class="paid" data-action="paymode" data-m="paid" aria-pressed="false">Paid now</button><button type="button" class="owes" data-action="paymode" data-m="owes" aria-pressed="true">Owes me</button></div></div>
+      <div class="field" id="tkDueWrap"><label for="tkDue">Pay by</label><input class="input" id="tkDue" type="date" value="${day(7)}"></div>
+      <div class="field"><label for="tkNotes">Notes</label><input class="input" id="tkNotes" placeholder="Optional"></div>
+      <button class="btn primary block" data-action="take" data-id="${b.id}">Mark as taken · removes ${g(b.grams)} from stock</button>
+      <div style="height:10px"></div>
+      <button class="btn ghost-danger block" data-action="remove-bag" data-id="${b.id}">Take bag off the board</button>`, {payMode:'owes', id:b.id, noFocus:true});
+  } else if (b.status === 'taken') {
+    const d = due(b);
+    openSheet(`${sheetHead(esc(pname) + ' owes')}${hero}
+      <dl class="kv"><dt>Taken</dt><dd>${niceDate(b.takenAt)}</dd><dt>Amount owed</dt><dd class="num">${usd(b.price)}</dd><dt>Status</dt><dd><span class="pill ${d.cls}">${d.label.split(' · ')[0]}</span></dd>${b.notes ? `<dt>Notes</dt><dd>${esc(b.notes)}</dd>` : ''}</dl>
+      <div class="field"><label for="edDue">Pay by</label><input class="input" id="edDue" type="date" value="${b.due || ''}"></div>
+      <button class="btn primary block" data-action="mark-paid" data-id="${b.id}">Mark paid</button>
+      <div style="height:10px"></div>
+      <button class="btn block" data-action="undo-take" data-id="${b.id}">Undo take · put back on board</button>`, {id:b.id, noFocus:true});
+  } else {
+    openSheet(`${sheetHead('Paid bag')}${hero}
+      <dl class="kv"><dt>Taken by</dt><dd>${esc(pname)}</dd><dt>Taken</dt><dd>${niceDate(b.takenAt)}</dd><dt>Paid</dt><dd>${niceDate(b.paidAt)}</dd><dt>Amount</dt><dd class="num">${usd(b.price)}</dd>${b.notes ? `<dt>Notes</dt><dd>${esc(b.notes)}</dd>` : ''}</dl>
+      <button class="btn block" data-action="unpay" data-id="${b.id}">Mark as not paid</button>`, {id:b.id, noFocus:true});
+  }
+}
+
+/* Person */
+function openPerson(id){
+  const p = id ? person(id) : null;
+  const mine = p ? S.bags.filter(b => b.personId === p.id) : [];
+  const owe = sum(mine.filter(b => b.status === 'taken'), b => b.price);
+  const paid = sum(mine.filter(b => b.status === 'paid'), b => b.price);
+  const rows = mine.filter(b => b.status !== 'board').sort((a, b) => b.takenAt.localeCompare(a.takenAt)).map(b => {
+    const d = due(b);
+    return `<button class="row" data-action="bag" data-id="${b.id}"><span class="main"><span class="t num">${g(b.grams)}</span><br><span class="s">taken ${niceDate(b.takenAt)}</span></span>
+      <span class="r"><span class="num">${usd(b.price)}</span><br>${b.status === 'paid' ? '<span class="pill ok">Paid</span>' : `<span class="pill ${d.cls}">${d.label.split(' · ')[0]}</span>`}</span></button>`;
+  }).join('');
+  openSheet(`${sheetHead(p ? esc(p.name) : 'Add person')}
+    ${p ? `<dl class="kv"><dt>Owes</dt><dd class="num ${owe ? 'minus' : ''}">${usd(owe)}</dd><dt>Paid so far</dt><dd class="num plus">${usd(paid)}</dd></dl>` : ''}
+    <div class="field"><label for="pName">Name</label><input class="input" id="pName" value="${esc(p?.name || '')}" autocomplete="off"></div>
+    <div id="pErr"></div>
+    <button class="btn primary block" data-action="save-person" data-id="${p?.id || ''}">${p ? 'Save name' : 'Add person'}</button>
+    ${p ? `<h3 class="flabel" style="margin:18px 0 8px">Bags</h3><div class="list">${rows || '<div class="empty">No bags yet.</div>'}</div>` : ''}`, {noFocus: !!p});
+}
+
+/* Stock entry */
+function openStock(kind){
+  const r = kind === 'restock';
+  openSheet(`${sheetHead(r ? 'Add restock' : 'Adjust inventory')}
+    ${r ? '' : `<div class="field"><span class="flabel">Direction</span><div class="seg" id="adjSeg"><button type="button" data-action="adjdir" data-d="1" aria-pressed="false">Add grams</button><button type="button" data-action="adjdir" data-d="-1" aria-pressed="true">Remove grams</button></div></div>`}
+    <div class="two">
+      <div class="field"><label for="stG">Grams</label><input class="input num" id="stG" type="number" inputmode="decimal" min="0.1" step="0.1" placeholder="0"></div>
+      ${r ? `<div class="field"><label for="stCost">You paid ($)</label><input class="input num" id="stCost" type="number" inputmode="decimal" min="0" placeholder="Optional"></div>` : `<div class="field"><label for="stDate">Date</label><input class="input" id="stDate" type="date" value="${iso(today)}"></div>`}
+    </div>
+    ${r ? `<div class="field"><label for="stDate">Date</label><input class="input" id="stDate" type="date" value="${iso(today)}"></div>` : ''}
+    <div class="field"><label for="stNote">${r ? 'Note' : 'Reason'}</label><input class="input" id="stNote" placeholder="${r ? 'Optional' : 'e.g. scale correction, spilled'}"></div>
+    <div id="stErr"></div>
+    <button class="btn primary block" data-action="save-stock" data-kind="${kind}">${r ? 'Add to inventory' : 'Save adjustment'}</button>`, {adjDir:-1, noFocus:true});
+}
+
+/* Settings */
+function openSettings(){
+  openSheet(`${sheetHead('Settings')}
+    <h3 class="flabel" style="margin:4px 0 8px">Preset prices</h3>
+    <p class="lead" style="margin-bottom:10px">These fill in automatically when you pick a size. You can still change the price on any bag.</p>
+    <div class="two">${S.presets.map((x, i) => `<div class="field"><label for="pp${i}">${x.g} g ($)</label><input class="input num" id="pp${i}" type="number" min="0" inputmode="decimal" value="${x.price}"></div>`).join('')}</div>
+    <button class="btn primary block" data-action="save-presets">Save prices</button>
+    <h3 class="flabel" style="margin:22px 0 8px">Invite code</h3>
+    <div style="display:flex;gap:8px;align-items:center"><span class="input num" style="flex:1;font-weight:700;letter-spacing:.12em;user-select:all" id="inviteCode">${S.invite}</span><button class="btn" data-action="copy-invite">Copy</button></div>
+    <p class="lead" style="margin-top:8px">Share this code. Anyone who enters it joins this board, and everyone has equal access.</p>
+    <h3 class="flabel" style="margin:18px 0 8px">Members</h3>
+    <div class="list">${S.members.map(m => `<div class="row"><span class="main t">${esc(m)}</span><span class="pill">Full access</span></div>`).join('')}</div>
+    <h3 class="flabel" style="margin:18px 0 8px">Security</h3>
+    <div class="list"><div class="row"><span class="main"><span class="t">App lock</span><br><span class="s">Face ID, fingerprint or PIN when the app opens</span></span><span class="pill ok">On</span></div></div>`, {noFocus:true});
+}
+
+/* Lock */
+let pin = '';
+function showLock(){
+  pin = '';
+  $('#lock').innerHTML = `
+    <svg viewBox="0 0 24 24" width="40" height="40" style="stroke:var(--accent);fill:none;stroke-width:1.8"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+    <h2>Pegboard is locked</h2>
+    <div class="dots" id="dots">${'<i></i>'.repeat(4)}</div>
+    <div class="keypad">${[1,2,3,4,5,6,7,8,9].map(n => `<button data-action="key" data-k="${n}">${n}</button>`).join('')}
+      <button class="txt" data-action="unlock">Face ID</button><button data-action="key" data-k="0">0</button><button class="txt" data-action="key" data-k="del">Delete</button></div>
+    <p>Mockup: any 4 digits unlock it.</p>`;
+  $('#lock').hidden = false;
+}
+
+/* ---------- actions ---------- */
+function arm(btn, label){
+  if (btn.dataset.armed === '1') return true;
+  btn.dataset.armed = '1'; btn.dataset.orig = btn.textContent; btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected) { btn.dataset.armed = '0'; btn.textContent = btn.dataset.orig; } }, 3500);
+  return false;
+}
+function after(msg){ closeSheet(); render(); if (msg) toast(msg); }
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  const a = el.dataset.action, id = el.dataset.id;
+  switch (a) {
+    case 'tab': S.tab = el.dataset.tab; render(); window.scrollTo(0, 0); break;
+    case 'close': closeSheet(); break;
+    case 'bag': openBag(id); break;
+    case 'new-bag': openNewBag(); break;
+    case 'settings': openSettings(); break;
+    case 'lock': showLock(); break;
+    case 'person': openPerson(id); break;
+    case 'person-new': openPerson(null); break;
+    case 'stock-new': openStock(el.dataset.kind); break;
+    case 'preset': {
+      const p = S.presets.find(x => x.g === +el.dataset.g);
+      $('#nbG').value = p.g; $('#nbPrice').value = p.price; updateNb(); break;
+    }
+    case 'qty': { const q = $('#nbQty'); q.value = Math.min(50, Math.max(1, (parseInt(q.value) || 1) + +el.dataset.d)); updateNb(); break; }
+    case 'hang': {
+      const gr = r1(parseFloat($('#nbG').value)), pr = parseFloat($('#nbPrice').value) || 0, qty = Math.max(1, parseInt($('#nbQty').value) || 1);
+      if (!(gr > 0)) { $('#nbWarn').innerHTML = '<div class="errbox">Enter how many grams go in the bag.</div>'; return; }
+      for (let i = 0; i < qty; i++) S.bags.push({id: nid('b'), grams: gr, price: pr, status: 'board'});
+      S.tab = 'board';
+      after(qty > 1 ? `Hung ${qty} bags of ${g(gr)}.` : `Hung a ${g(gr)} bag.`); break;
+    }
+    case 'paymode': {
+      sheetState.payMode = el.dataset.m;
+      $('#tkSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === el)));
+      $('#tkDueWrap').hidden = sheetState.payMode === 'paid'; break;
+    }
+    case 'take': {
+      const b = bagById(id); let pid = $('#tkPerson').value;
+      if (pid === '__new') {
+        const n = $('#tkNew').value.trim();
+        if (!n) { $('#tkErr').innerHTML = '<div class="errbox">Type the new person\'s name.</div>'; return; }
+        const ex = S.people.find(p => p.name.toLowerCase() === n.toLowerCase());
+        if (ex) pid = ex.id; else { pid = nid('p'); S.people.push({id: pid, name: n}); }
+      }
+      if (!pid) { $('#tkErr').innerHTML = '<div class="errbox">Choose who grabbed the bag.</div>'; return; }
+      b.personId = pid; b.price = parseFloat($('#tkPrice').value) || 0; b.takenAt = iso(today); b.notes = $('#tkNotes').value.trim();
+      const name = person(pid).name;
+      if (sheetState.payMode === 'paid') { b.status = 'paid'; b.paidAt = iso(today); b.due = null; after(`${name} paid ${usd(b.price)}. ${g(b.grams)} came off your stock, and the bag moved to History.`); }
+      else { b.status = 'taken'; b.due = $('#tkDue').value || null; after(`${name} owes ${usd(b.price)}. ${g(b.grams)} came off your stock.`); }
+      break;
+    }
+    case 'remove-bag': {
+      if (!arm(el, 'Tap again to remove')) return;
+      const b = bagById(id); S.bags = S.bags.filter(x => x !== b);
+      after(`Removed the ${g(b.grams)} bag. Its grams are unbagged again.`); break;
+    }
+    case 'mark-paid': {
+      const b = bagById(id); b.status = 'paid'; b.paidAt = iso(today);
+      after(`${person(b.personId).name} paid ${usd(b.price)}. Moved to History.`); break;
+    }
+    case 'undo-take': {
+      if (!arm(el, 'Tap again to undo')) return;
+      const b = bagById(id); const n = person(b.personId).name;
+      Object.assign(b, {status: 'board', personId: null, due: null, takenAt: null, paidAt: null, notes: ''});
+      after(`Undone. The bag is back on the board and ${g(b.grams)} returned to your stock (was ${n}).`); break;
+    }
+    case 'unpay': {
+      const b = bagById(id); b.status = 'taken'; b.paidAt = null; b.due = b.due || day(7);
+      after(`Moved back to Owed. ${person(b.personId).name} owes ${usd(b.price)}.`); break;
+    }
+    case 'save-person': {
+      const n = $('#pName').value.trim();
+      if (!n) { $('#pErr').innerHTML = '<div class="errbox">Enter a name.</div>'; return; }
+      if (id) { person(id).name = n; after('Name saved.'); }
+      else { S.people.push({id: nid('p'), name: n}); after(`Added ${n}.`); }
+      break;
+    }
+    case 'adjdir': {
+      sheetState.adjDir = +el.dataset.d;
+      $('#adjSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === el))); break;
+    }
+    case 'save-stock': {
+      const k = el.dataset.kind, gr = r1(parseFloat($('#stG').value));
+      if (!(gr > 0)) { $('#stErr').innerHTML = '<div class="errbox">Enter the number of grams.</div>'; return; }
+      const signed = k === 'restock' ? gr : gr * sheetState.adjDir;
+      const cost = k === 'restock' ? (parseFloat($('#stCost').value) || null) : null;
+      S.stock.push({id: nid('s'), kind: k, grams: signed, cost, note: $('#stNote').value.trim(), date: $('#stDate').value || iso(today)});
+      after(`${signed >= 0 ? 'Added' : 'Removed'} ${g(Math.abs(signed))}. On hand is now ${g(calc().onHand)}.`); break;
+    }
+    case 'save-presets': {
+      S.presets.forEach((p, i) => { const v = parseFloat($('#pp' + i).value); if (v >= 0) p.price = v; });
+      after('Preset prices saved.'); break;
+    }
+    case 'copy-invite': {
+      const done = () => toast('Invite code copied.');
+      try { navigator.clipboard.writeText(S.invite).then(done, () => { selectInvite(); toast('Copy the selected code.'); }); }
+      catch (_) { selectInvite(); toast('Copy the selected code.'); }
+      break;
+    }
+    case 'key': {
+      if (el.dataset.k === 'del') pin = pin.slice(0, -1); else if (pin.length < 4) pin += el.dataset.k;
+      $('#dots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i < pin.length));
+      if (pin.length === 4) setTimeout(() => { $('#lock').hidden = true; toast('Unlocked.'); }, 180);
+      break;
+    }
+    case 'unlock': $('#lock').hidden = true; toast('Unlocked with Face ID.'); break;
+  }
+});
+function selectInvite(){ const r = document.createRange(); r.selectNodeContents($('#inviteCode')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'nbG' || e.target.id === 'nbQty') updateNb();
+  if (e.target.id === 'histSearch') {
+    histQuery = e.target.value;
+    const pos = e.target.selectionStart; render();
+    const s = $('#histSearch'); s.focus(); s.setSelectionRange(pos, pos);
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'tkPerson') {
+    const isNew = e.target.value === '__new';
+    $('#tkNewWrap').hidden = !isNew; if (isNew) $('#tkNew').focus();
+    $('#tkErr').innerHTML = '';
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheetWrap').hidden) closeSheet(); });
+
+render();
+})();
+</script>

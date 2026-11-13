@@ -78,7 +78,9 @@ money_collected  = Σ price of paid bags
 - **Undo take:** a bag marked as taken can be undone. It returns to the board and its grams go back to the pool.
 - **Currency:** USD only.
 - **Over-bagging:** if a new bag needs more grams than `available_to_bag`, the app shows a warning but lets you continue.
+- **Many bags:** the board scrolls down.
+- **Taken but unpaid bags** stay on the board with a name tag (red when overdue) until they are paid.
 
 ## Open questions
 
-- Should the board allow more than one row or "page" of pegs if there are many bags?
+- None right now.
