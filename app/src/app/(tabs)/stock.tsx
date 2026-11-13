@@ -35,12 +35,14 @@ export default function StockScreen() {
         <Button title="Add restock" variant="primary" style={{ flex: 1 }} onPress={() => router.push('/stock-entry?kind=restock')} />
         <Button title="Adjust" style={{ flex: 1 }} onPress={() => router.push('/stock-entry?kind=adjust')} />
       </View>
+      <Button title="See profit" onPress={() => router.push('/profit')} />
+      {stock.length > 0 ? <Text style={t.muted}>Tap an entry to fix or delete it.</Text> : null}
       <Card>
         {stock.length === 0 ? (
           <Text style={[t.muted, { padding: 20, textAlign: 'center' }]}>No inventory yet. Tap "Add restock" to enter your starting total.</Text>
         ) : (
           stock.map((s, i) => (
-            <Row key={s.id} last={i === stock.length - 1}>
+            <Row key={s.id} last={i === stock.length - 1} onPress={() => router.push(`/stock-entry?id=${s.id}`)}>
               <View style={{ flex: 1 }}>
                 <Text style={t.strong}>
                   {s.kind === 'restock' ? 'Restock' : 'Adjustment'}

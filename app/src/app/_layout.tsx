@@ -77,6 +77,8 @@ function Navigation() {
           <Stack.Screen name="person/[id]" options={{ title: 'Person' }} />
           <Stack.Screen name="stock-entry" options={{ presentation: 'modal', title: 'Inventory' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="edit-bag/[id]" options={{ presentation: 'modal', title: 'Edit bag' }} />
+          <Stack.Screen name="profit" options={{ title: 'Profit' }} />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

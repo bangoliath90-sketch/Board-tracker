@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
 import { pickContact } from '../../lib/contacts';
@@ -13,7 +13,7 @@ export default function PersonScreen() {
   const c = useColors();
   const t = useText();
   const toast = useToast();
-  const { people, bags, addPerson, updatePerson } = useBoard();
+  const { people, bags, addPerson, updatePerson, deletePerson } = useBoard();
   const person = people.find((p) => p.id === id);
   const [name, setName] = useState(person?.name ?? '');
   const [phone, setPhone] = useState(person?.phone ?? '');
@@ -89,6 +89,30 @@ export default function PersonScreen() {
       <Field label="Phone (for text reminders)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" placeholder="Optional" />
       {error ? <Notice text={error} tone="late" /> : null}
       <Button title={isNew ? 'Add person' : 'Save'} variant="primary" busy={busy} onPress={save} />
+      {!isNew && mine.length === 0 ? (
+        <Button
+          title="Delete person"
+          variant="danger"
+          onPress={() =>
+            Alert.alert(`Delete ${person!.name}?`, 'They will be removed from your people list.', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await deletePerson(id);
+                    toast(`Deleted ${person!.name}.`);
+                    router.back();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Could not delete. Try again.');
+                  }
+                },
+              },
+            ])
+          }
+        />
+      ) : null}
       {!isNew ? (
         <>
           <Label>Bags</Label>

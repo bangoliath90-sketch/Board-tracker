@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { LiquidBag } from '../../components/LiquidBag';
-import { Card, Page, Row, useText } from '../../components/ui';
+import { Button, Card, Page, Row, useText } from '../../components/ui';
 import { useBoard } from '../../lib/board';
 import { grams, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
@@ -24,6 +24,7 @@ export default function HistoryScreen() {
         <Text style={[t.mono, { fontSize: 32, color: c.ok }]}>{usd(totals.collected)}</Text>
         <Text style={t.muted}>collected</Text>
       </View>
+      <Button title="See profit" onPress={() => router.push('/profit')} />
       <TextInput
         value={query}
         onChangeText={setQuery}

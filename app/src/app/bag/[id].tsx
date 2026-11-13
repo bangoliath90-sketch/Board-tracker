@@ -6,6 +6,7 @@ import { LiquidBag } from '../../components/LiquidBag';
 import { Pegboard } from '../../components/Pegboard';
 import { Button, Chip, Field, Label, Notice, Page, Pill, Segmented, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
+import { bagProfit, costPerGram } from '../../lib/profit';
 import { pickContact } from '../../lib/contacts';
 import { isReminderDue, openTextReminder, reminderDays, reminderMessage, reminderTemplate } from '../../lib/reminders';
 import { addDays, dueInfo, grams, parseAmount, shortDate, usd } from '../../lib/format';
@@ -175,6 +176,7 @@ function TakeForm({ bag }: { bag: Bag }) {
       <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="Optional" />
       {error ? <Notice text={error} tone="late" /> : null}
       <Button title={`Mark as taken · removes ${grams(bag.grams)} from stock`} variant="primary" busy={busy} onPress={submit} />
+      <Button title="Edit grams or price" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
       <Button title="Take bag off the board" variant="danger" onPress={confirmRemove} />
     </Page>
   );
@@ -231,6 +233,7 @@ function OwedBag({ bag }: { bag: Bag }) {
         <Text style={t.muted}>Amount owed</Text>
         <Text style={t.mono}>{usd(bag.price)}</Text>
       </View>
+      <ProfitLine bag={bag} />
       <View style={styles.kv}>
         <Text style={t.muted}>Status</Text>
         <Pill text={d.label} tone={d.tone === 'none' ? 'none' : d.tone} />
@@ -284,6 +287,7 @@ function OwedBag({ bag }: { bag: Bag }) {
           })
         }
       />
+      <Button title="Edit bag" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
       <Button title="Undo take · put back on board" onPress={confirmUndo} />
     </Page>
   );
@@ -312,7 +316,9 @@ function PaidBag({ bag }: { bag: Bag }) {
           <Text style={[t.strong, { flexShrink: 1, textAlign: 'right' }]}>{v}</Text>
         </View>
       ))}
+      <ProfitLine bag={bag} />
       {error ? <Notice text={error} tone="late" /> : null}
+      <Button title="Edit bag" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
       <Button
         title="Mark as not paid"
         busy={busy}
@@ -325,6 +331,23 @@ function PaidBag({ bag }: { bag: Bag }) {
         }
       />
     </Page>
+  );
+}
+
+function ProfitLine({ bag }: { bag: Bag }) {
+  const t = useText();
+  const c = useColors();
+  const { stock } = useBoard();
+  const p = bagProfit(bag, costPerGram(stock));
+  if (!p) return null;
+  return (
+    <View style={styles.kv}>
+      <Text style={t.muted}>Cost · profit</Text>
+      <Text style={t.strong}>
+        {usd(Math.round(p.cost * 100) / 100)} ·{' '}
+        <Text style={{ color: p.profit < 0 ? c.danger : c.ok }}>{usd(Math.round(p.profit * 100) / 100)}</Text>
+      </Text>
+    </View>
   );
 }
 

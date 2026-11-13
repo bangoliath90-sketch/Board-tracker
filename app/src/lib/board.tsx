@@ -43,6 +43,10 @@ type BoardState = {
   addPerson: (name: string, phone?: string | null) => Promise<string>;
   updatePerson: (id: string, fields: { name: string; phone: string | null }) => Promise<void>;
   saveReminderSettings: (days: number, template: string) => Promise<void>;
+  updateBag: (bagId: string, fields: { grams: number; price: number; personId?: string; notes: string }) => Promise<void>;
+  deletePerson: (id: string) => Promise<void>;
+  updateStock: (id: string, fields: { grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
+  deleteStock: (id: string) => Promise<void>;
   markReminded: (bagId: string) => Promise<void>;
   addStock: (entry: { kind: 'restock' | 'adjust'; grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
   savePresets: (presets: Preset[]) => Promise<void>;
@@ -322,6 +326,40 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       const id = requireBoard();
       check(await supabase.from('boards').update({ reminder_days: days, reminder_template: template.trim() }).eq('id', id));
       await refresh('boards');
+    },
+
+    async updateBag(bagId, fields) {
+      const update: Record<string, unknown> = {
+        grams: round1(fields.grams),
+        price: fields.price,
+        notes: fields.notes.trim() || null,
+      };
+      if (fields.personId) update.person_id = fields.personId;
+      check(await supabase.from('bags').update(update).eq('id', bagId));
+      await refresh('bags');
+    },
+
+    async deletePerson(personId) {
+      if (bags.some((b) => b.person_id === personId && b.status !== 'on_board')) {
+        throw new Error('This person has bags in Owed or History, so they can\'t be deleted.');
+      }
+      check(await supabase.from('people').delete().eq('id', personId));
+      await refresh('people');
+    },
+
+    async updateStock(id, fields) {
+      check(
+        await supabase
+          .from('stock_entries')
+          .update({ grams: round1(fields.grams), cost: fields.cost, note: fields.note.trim() || null, entry_date: fields.date })
+          .eq('id', id),
+      );
+      await refresh('stock_entries');
+    },
+
+    async deleteStock(id) {
+      check(await supabase.from('stock_entries').delete().eq('id', id));
+      await refresh('stock_entries');
     },
 
     async markReminded(bagId) {
