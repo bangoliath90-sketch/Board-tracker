@@ -246,3 +246,18 @@ grant  execute on function public.join_board(text, text)   to authenticated;
 
 alter publication supabase_realtime add table
   public.bags, public.people, public.stock_entries, public.presets, public.board_members;
+
+-- ---------------------------------------------------------------
+-- Contacts and text reminders (also in migrations/002_contacts_and_reminders.sql)
+-- ---------------------------------------------------------------
+
+
+alter table public.people add column if not exists phone text;
+
+alter table public.boards add column if not exists reminder_days integer not null default 1
+  check (reminder_days between 0 and 365);
+alter table public.boards add column if not exists reminder_template text not null
+  default 'Hi {name}, just a reminder that {amount} was due on {due}. Thanks!';
+
+-- When someone last opened a text reminder for this bag.
+alter table public.bags add column if not exists reminded_at timestamptz;

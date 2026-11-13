@@ -6,6 +6,8 @@ import { LiquidBag } from '../../components/LiquidBag';
 import { Pegboard } from '../../components/Pegboard';
 import { Button, Chip, Field, Label, Notice, Page, Pill, Segmented, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
+import { pickContact } from '../../lib/contacts';
+import { isReminderDue, openTextReminder, reminderDays, reminderMessage, reminderTemplate } from '../../lib/reminders';
 import { addDays, dueInfo, grams, parseAmount, shortDate, usd } from '../../lib/format';
 import type { Bag } from '../../lib/types';
 import { monoFont, useColors } from '../../lib/theme';
@@ -65,6 +67,7 @@ function TakeForm({ bag }: { bag: Bag }) {
   const { people, takeBag, removeBag } = useBoard();
   const [personId, setPersonId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [phone, setPhone] = useState('');
   const [adding, setAdding] = useState(people.length === 0);
   const [price, setPrice] = useState(String(bag.price));
   const [mode, setMode] = useState<'owes' | 'paid'>('owes');
@@ -80,6 +83,7 @@ function TakeForm({ bag }: { bag: Bag }) {
       const { personName } = await takeBag(bag.id, {
         personId: adding ? undefined : personId ?? undefined,
         newPersonName: adding ? newName : undefined,
+        phone: phone || null,
         price: p,
         paid: mode === 'paid',
         dueDate: mode === 'paid' ? null : due,
@@ -93,6 +97,29 @@ function TakeForm({ bag }: { bag: Bag }) {
       router.back();
     });
   };
+
+  const fromContacts = async () => {
+    setError(null);
+    try {
+      const picked = await pickContact();
+      if (!picked) return;
+      const match = people.find((p) => p.name.toLowerCase() === picked.name.toLowerCase());
+      if (match) {
+        setAdding(false);
+        setPersonId(match.id);
+        setNewName('');
+      } else {
+        setAdding(true);
+        setPersonId(null);
+        setNewName(picked.name);
+      }
+      setPhone(picked.phone ?? '');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open your contacts.');
+    }
+  };
+
+  const selected = people.find((p) => p.id === personId);
 
   const confirmRemove = () =>
     Alert.alert('Take this bag off the board?', `The ${grams(bag.grams)} goes back to unbagged stock.`, [
@@ -127,9 +154,13 @@ function TakeForm({ bag }: { bag: Bag }) {
             }}
           />
         ))}
-        <Chip label="+ New person" on={adding} onPress={() => { setAdding(true); setPersonId(null); }} />
+        <Chip label="+ New person" on={adding} onPress={() => { setAdding(true); setPersonId(null); setPhone(''); }} />
+        <Chip label="From contacts" on={false} onPress={fromContacts} />
       </View>
-      {adding ? <Field label="New person's name" value={newName} onChangeText={setNewName} autoFocus={people.length > 0} /> : null}
+      {adding ? <Field label="New person's name" value={newName} onChangeText={setNewName} /> : null}
+      {adding || (selected && !selected.phone) ? (
+        <Field label="Phone (for text reminders)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="Optional" autoComplete="tel" />
+      ) : null}
       <Field label="Price ($)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" mono />
       <Label>Payment</Label>
       <Segmented
@@ -153,8 +184,22 @@ function TakeForm({ bag }: { bag: Bag }) {
 function OwedBag({ bag }: { bag: Bag }) {
   const t = useText();
   const toast = useToast();
-  const { personName, markPaid, undoTake, setDueDate } = useBoard();
+  const { board, people, personName, markPaid, undoTake, setDueDate, markReminded } = useBoard();
   const name = personName(bag.person_id);
+  const person = people.find((p) => p.id === bag.person_id);
+  const days = reminderDays(board);
+  const reminderDue = isReminderDue(bag, days);
+  const message = reminderMessage(reminderTemplate(board), bag, name);
+
+  const sendText = () =>
+    run(async () => {
+      if (!person?.phone) return;
+      const sent = await openTextReminder(person.phone, message);
+      if (sent) {
+        await markReminded(bag.id);
+        toast(`Reminder sent to ${name}.`);
+      }
+    });
   const d = dueInfo(bag);
   const [due, setDue] = useState(bag.due_date ?? addDays(7));
   const { busy, error, run } = useAction();
@@ -207,6 +252,25 @@ function OwedBag({ bag }: { bag: Bag }) {
           });
         }}
       />
+      <Label>Text reminder</Label>
+      {person?.phone ? (
+        <>
+          {reminderDue ? <Notice text={`${name} is ${days > 0 ? `${days}+ day${days === 1 ? '' : 's'} ` : ''}past due. Time to send a reminder.`} tone="late" /> : null}
+          <View style={[styles.preview, { borderColor: t.muted.color as string }]}>
+            <Text style={t.body}>{message}</Text>
+          </View>
+          <Text style={t.muted}>
+            To {person.phone}
+            {bag.reminded_at ? ` · last sent ${shortDate(bag.reminded_at)}` : ''}
+          </Text>
+          <Button title={`Text reminder to ${name}`} variant={reminderDue ? 'primary' : 'plain'} busy={busy} onPress={sendText} />
+        </>
+      ) : (
+        <>
+          <Text style={t.muted}>Add a phone number for {name} to text them a reminder.</Text>
+          <Button title={`Add ${name}'s phone`} onPress={() => router.push(`/person/${bag.person_id}`)} />
+        </>
+      )}
       {error ? <Notice text={error} tone="late" /> : null}
       <Button
         title="Mark paid"
@@ -271,4 +335,5 @@ const styles = StyleSheet.create({
   heroS: { fontSize: 13, color: '#4B5560' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  preview: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 12, padding: 12 },
 });

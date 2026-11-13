@@ -4,7 +4,8 @@ import { Alert, Share, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { useBoard } from '../lib/board';
-import { parseAmount } from '../lib/format';
+import { addDays, parseAmount } from '../lib/format';
+import { reminderDays, reminderMessage, reminderTemplate } from '../lib/reminders';
 import { supabase } from '../lib/supabase';
 import { monoFont, useColors } from '../lib/theme';
 
@@ -13,12 +14,38 @@ export default function Settings() {
   const t = useText();
   const toast = useToast();
   const { session } = useAuth();
-  const { board, members, presets, savePresets, leaveBoard } = useBoard();
+  const { board, members, presets, savePresets, saveReminderSettings, leaveBoard } = useBoard();
   const [prices, setPrices] = useState<Record<number, string>>(() =>
     Object.fromEntries(presets.map((p) => [p.grams, String(p.default_price)])),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [days, setDays] = useState(String(reminderDays(board)));
+  const [template, setTemplate] = useState(reminderTemplate(board));
+  const [rBusy, setRBusy] = useState(false);
+  const [rError, setRError] = useState<string | null>(null);
+
+  async function saveReminders() {
+    setRError(null);
+    const d = Number(days);
+    if (!Number.isInteger(d) || d < 0 || d > 365) return setRError('Enter a whole number of days, 0 to 365.');
+    if (!template.trim()) return setRError('Write the message to send.');
+    setRBusy(true);
+    try {
+      await saveReminderSettings(d, template);
+      toast('Reminder settings saved.');
+    } catch (e) {
+      setRError(e instanceof Error ? e.message : 'Could not save. Try again.');
+    } finally {
+      setRBusy(false);
+    }
+  }
+
+  const sample = reminderMessage(
+    template || reminderTemplate(null),
+    { price: 70, due_date: addDays(-1) } as Parameters<typeof reminderMessage>[1],
+    'Sam',
+  );
 
   async function save() {
     setError(null);
@@ -60,6 +87,20 @@ export default function Settings() {
       </View>
       {error ? <Notice text={error} tone="late" /> : null}
       <Button title="Save prices" variant="primary" busy={busy} onPress={save} />
+
+      <Label>Text reminders</Label>
+      <Text style={t.muted}>
+        When a bag is this many days past due, everyone on the board gets a notification. Tap it to open Messages with the reminder written out, then tap Send.
+      </Text>
+      <Field label="Days past due before reminding" value={days} onChangeText={setDays} keyboardType="number-pad" mono />
+      <Field label="Message" value={template} onChangeText={setTemplate} multiline style={{ minHeight: 80, textAlignVertical: 'top' }} />
+      <Text style={t.muted}>{'{name}'}, {'{amount}'} and {'{due}'} are filled in automatically.</Text>
+      <Card style={{ padding: 12 }}>
+        <Label>Preview</Label>
+        <Text style={[t.body, { marginTop: 4 }]}>{sample}</Text>
+      </Card>
+      {rError ? <Notice text={rError} tone="late" /> : null}
+      <Button title="Save reminder settings" variant="primary" busy={rBusy} onPress={saveReminders} />
 
       <Label>Invite code</Label>
       <Card style={{ padding: 14, alignItems: 'center' }}>

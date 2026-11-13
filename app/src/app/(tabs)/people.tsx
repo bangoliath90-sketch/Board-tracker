@@ -34,7 +34,7 @@ export default function PeopleScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={t.strong}>{p.name}</Text>
                 <Text style={t.muted}>
-                  {count} bag{count === 1 ? '' : 's'} taken
+                  {count} bag{count === 1 ? '' : 's'} taken{p.phone ? ` · ${p.phone}` : ''}
                 </Text>
               </View>
               {owe > 0 ? <Pill text={`Owes ${usd(owe)}`} tone={late ? 'late' : 'soon'} /> : <Pill text="Paid up" tone="ok" />}

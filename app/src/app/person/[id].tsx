@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
+import { pickContact } from '../../lib/contacts';
 import { dueInfo, grams, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
 
@@ -12,9 +13,10 @@ export default function PersonScreen() {
   const c = useColors();
   const t = useText();
   const toast = useToast();
-  const { people, bags, addPerson, renamePerson } = useBoard();
+  const { people, bags, addPerson, updatePerson } = useBoard();
   const person = people.find((p) => p.id === id);
   const [name, setName] = useState(person?.name ?? '');
+  const [phone, setPhone] = useState(person?.phone ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,17 +34,30 @@ export default function PersonScreen() {
     setBusy(true);
     try {
       if (isNew) {
-        await addPerson(n);
+        await addPerson(n, phone);
         toast(`Added ${n}.`);
         router.back();
       } else {
-        await renamePerson(id, n);
-        toast('Name saved.');
+        await updatePerson(id, { name: n, phone });
+        toast('Saved.');
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Try again.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function fromContacts() {
+    setError(null);
+    try {
+      const picked = await pickContact();
+      if (!picked) return;
+      if (isNew || !name.trim()) setName(picked.name);
+      if (picked.phone) setPhone(picked.phone);
+      else setError(`${picked.name} has no phone number in your contacts.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open your contacts.');
     }
   }
 
@@ -69,9 +84,11 @@ export default function PersonScreen() {
           </Card>
         </View>
       ) : null}
-      <Field label="Name" value={name} onChangeText={setName} autoFocus={isNew} onSubmitEditing={save} />
+      <Button title="Pick from contacts" onPress={fromContacts} />
+      <Field label="Name" value={name} onChangeText={setName} />
+      <Field label="Phone (for text reminders)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" placeholder="Optional" />
       {error ? <Notice text={error} tone="late" /> : null}
-      <Button title={isNew ? 'Add person' : 'Save name'} variant="primary" busy={busy} onPress={save} />
+      <Button title={isNew ? 'Add person' : 'Save'} variant="primary" busy={busy} onPress={save} />
       {!isNew ? (
         <>
           <Label>Bags</Label>

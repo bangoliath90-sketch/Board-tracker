@@ -11,6 +11,8 @@ type Table = 'boards' | 'board_members' | 'presets' | 'people' | 'bags' | 'stock
 export type TakeInput = {
   personId?: string;
   newPersonName?: string;
+  /** Phone for a new person, or to fill in for an existing person who has none. */
+  phone?: string | null;
   price: number;
   paid: boolean;
   dueDate: string | null;
@@ -38,8 +40,10 @@ type BoardState = {
   undoTake: (bagId: string) => Promise<void>;
   removeBag: (bagId: string) => Promise<void>;
   setDueDate: (bagId: string, dueDate: string | null) => Promise<void>;
-  addPerson: (name: string) => Promise<string>;
-  renamePerson: (id: string, name: string) => Promise<void>;
+  addPerson: (name: string, phone?: string | null) => Promise<string>;
+  updatePerson: (id: string, fields: { name: string; phone: string | null }) => Promise<void>;
+  saveReminderSettings: (days: number, template: string) => Promise<void>;
+  markReminded: (bagId: string) => Promise<void>;
   addStock: (entry: { kind: 'restock' | 'adjust'; grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
   savePresets: (presets: Preset[]) => Promise<void>;
   leaveBoard: () => Promise<void>;
@@ -75,7 +79,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
   const fetchTable = useCallback(async (table: Table, boardId: string) => {
     switch (table) {
       case 'boards': {
-        const data = check(await supabase.from('boards').select('id,name,invite_code').eq('id', boardId).single());
+        const data = check(await supabase.from('boards').select('*').eq('id', boardId).single());
         setBoard(data as Board);
         break;
       }
@@ -214,6 +218,10 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       const id = requireBoard();
       let personId = input.personId;
       let name = personId ? personName(personId) : '';
+      const phone = input.phone?.trim() || null;
+      if (personId && phone && !people.find((p) => p.id === personId)?.phone) {
+        check(await supabase.from('people').update({ phone }).eq('id', personId));
+      }
       if (!personId) {
         const newName = (input.newPersonName ?? '').trim();
         if (!newName) throw new Error('Choose who grabbed the bag.');
@@ -221,8 +229,15 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         if (existing) {
           personId = existing.id;
           name = existing.name;
+          if (phone && !existing.phone) check(await supabase.from('people').update({ phone }).eq('id', existing.id));
         } else {
-          const row = check(await supabase.from('people').insert({ board_id: id, name: newName }).select('id').single());
+          const row = check(
+            await supabase
+              .from('people')
+              .insert(phone ? { board_id: id, name: newName, phone } : { board_id: id, name: newName })
+              .select('id')
+              .single(),
+          );
           personId = (row as { id: string }).id;
           name = newName;
         }
@@ -263,7 +278,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       check(
         await supabase
           .from('bags')
-          .update({ status: 'on_board', person_id: null, taken_at: null, paid_at: null, due_date: null })
+          .update({ status: 'on_board', person_id: null, taken_at: null, paid_at: null, due_date: null, reminded_at: null })
           .eq('id', bagId),
       );
       await refresh('bags');
@@ -279,16 +294,39 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       await refresh('bags');
     },
 
-    async addPerson(name) {
+    async addPerson(name, phone) {
       const id = requireBoard();
-      const row = check(await supabase.from('people').insert({ board_id: id, name: name.trim() }).select('id').single());
+      const p = phone?.trim();
+      const row = check(
+        await supabase
+          .from('people')
+          .insert(p ? { board_id: id, name: name.trim(), phone: p } : { board_id: id, name: name.trim() })
+          .select('id')
+          .single(),
+      );
       await refresh('people');
       return (row as { id: string }).id;
     },
 
-    async renamePerson(personId, name) {
-      check(await supabase.from('people').update({ name: name.trim() }).eq('id', personId));
+    async updatePerson(personId, fields) {
+      check(
+        await supabase
+          .from('people')
+          .update({ name: fields.name.trim(), phone: fields.phone?.trim() || null })
+          .eq('id', personId),
+      );
       await refresh('people');
+    },
+
+    async saveReminderSettings(days, template) {
+      const id = requireBoard();
+      check(await supabase.from('boards').update({ reminder_days: days, reminder_template: template.trim() }).eq('id', id));
+      await refresh('boards');
+    },
+
+    async markReminded(bagId) {
+      check(await supabase.from('bags').update({ reminded_at: new Date().toISOString() }).eq('id', bagId));
+      await refresh('bags');
     },
 
     async addStock(entry) {

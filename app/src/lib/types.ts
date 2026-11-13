@@ -1,9 +1,15 @@
 export type BagStatus = 'on_board' | 'taken' | 'paid';
 
-export type Board = { id: string; name: string; invite_code: string };
+export type Board = {
+  id: string;
+  name: string;
+  invite_code: string;
+  reminder_days?: number;
+  reminder_template?: string;
+};
 export type Member = { board_id: string; user_id: string; display_name: string };
 export type Preset = { grams: number; default_price: number };
-export type Person = { id: string; board_id: string; name: string; notes: string | null };
+export type Person = { id: string; board_id: string; name: string; notes: string | null; phone?: string | null };
 
 export type Bag = {
   id: string;
@@ -16,6 +22,7 @@ export type Bag = {
   due_date: string | null; // YYYY-MM-DD
   paid_at: string | null;
   notes: string | null;
+  reminded_at?: string | null;
   created_at: string;
 };
 

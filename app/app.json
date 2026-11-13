@@ -35,7 +35,14 @@
         {
           "faceIDPermission": "Board Tracker uses Face ID to keep your board locked."
         }
-      ]
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Board Tracker lets you pick a person and their phone number from your contacts."
+        }
+      ],
+      "expo-notifications"
     ],
     "scheme": "boardtracker",
     "experiments": {

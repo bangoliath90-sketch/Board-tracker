@@ -3,13 +3,15 @@ import { Text, View } from 'react-native';
 import { LiquidBag } from '../../components/LiquidBag';
 import { Card, Page, Pill, Row, useText } from '../../components/ui';
 import { useBoard } from '../../lib/board';
+import { isReminderDue, reminderDays } from '../../lib/reminders';
 import { dueInfo, grams, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
 
 export default function OwedScreen() {
   const c = useColors();
   const t = useText();
-  const { bags, totals, personName } = useBoard();
+  const { board, bags, totals, personName } = useBoard();
+  const days = reminderDays(board);
   const owed = bags
     .filter((b) => b.status === 'taken')
     .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
@@ -40,6 +42,7 @@ export default function OwedScreen() {
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
                   <Text style={t.mono}>{usd(b.price)}</Text>
                   <Pill text={d.label} tone={d.tone === 'none' ? 'none' : d.tone} />
+                  {isReminderDue(b, days) ? <Pill text="Text reminder due" tone="late" /> : null}
                 </View>
               </Row>
             );
