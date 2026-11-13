@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -58,9 +59,12 @@ export default function SignIn() {
     const e = email.trim();
     if (!e) return setMessage({ text: 'Enter the email you signed up with.', tone: 'late' });
     attempt(async () => {
-      const { error } = await supabase.auth.resetPasswordForEmail(e);
+      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo: Linking.createURL('reset-password') });
       if (error) throw error;
-      go('code', { text: `If ${e} has an account, a code is on its way. Check your spam folder too.`, tone: 'ok' });
+      go('code', {
+        text: `If ${e} has an account, an email is on its way (check spam too). Tap its "Reset password" link on this phone, or type the code below if the email has one.`,
+        tone: 'ok',
+      });
     });
   };
 

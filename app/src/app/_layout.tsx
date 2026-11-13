@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Button, ToastProvider } from '../components/ui';
 import { AuthProvider, useAuth } from '../lib/auth';
@@ -33,14 +33,6 @@ function Navigation() {
   const { session, loading } = useAuth();
   const { status, error, reload } = useBoard();
 
-  if (loading || (session && status === 'loading')) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }}>
-        <ActivityIndicator color={c.accent} />
-      </View>
-    );
-  }
-
   if (session && status === 'error') {
     return (
       <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12, backgroundColor: c.bg }}>
@@ -52,6 +44,7 @@ function Navigation() {
     );
   }
 
+  const busy = loading || (!!session && status === 'loading');
   const signedIn = !!session;
   const hasBoard = status === 'ready';
 
@@ -66,6 +59,7 @@ function Navigation() {
           contentStyle: { backgroundColor: c.bg },
         }}
       >
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>
@@ -83,6 +77,11 @@ function Navigation() {
           <Stack.Screen name="profit" options={{ title: 'Profit' }} />
         </Stack.Protected>
       </Stack>
+      {busy ? (
+        <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg }]}>
+          <ActivityIndicator color={c.accent} />
+        </View>
+      ) : null}
     </ThemeProvider>
   );
 }
