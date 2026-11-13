@@ -8,8 +8,10 @@ import { BoardProvider, useBoard } from '../lib/board';
 import { LockProvider } from '../lib/lock';
 import { supabase } from '../lib/supabase';
 import { useColors } from '../lib/theme';
+import { useAutoUpdate } from '../lib/updates';
 
 export default function RootLayout() {
+  useAutoUpdate();
   return (
     <SafeAreaProvider>
       <AuthProvider>

@@ -5,6 +5,7 @@ import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast 
 import { useAuth } from '../lib/auth';
 import { useBoard } from '../lib/board';
 import { useLock } from '../lib/lock';
+import { versionLabel } from '../lib/updates';
 import { addDays, parseAmount } from '../lib/format';
 import { reminderDays, reminderMessage, reminderTemplate } from '../lib/reminders';
 import { supabase } from '../lib/supabase';
@@ -188,6 +189,7 @@ export default function Settings() {
       {pwError ? <Notice text={pwError} tone="late" /> : null}
       <Button title="Change password" busy={pwBusy} onPress={changePassword} />
       <Button title="Sign out" onPress={() => supabase.auth.signOut()} />
+      <Text style={[t.muted, { textAlign: 'center' }]}>App version: {versionLabel()}</Text>
       <Button
         title="Leave this board"
         variant="danger"
