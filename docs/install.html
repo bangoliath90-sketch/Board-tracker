@@ -1,0 +1,144 @@
+<title>Install Board Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a pegboard-tan header band with the app's liquid bag, then two install cards (Android, iPhone) side by side that stack on phones, then the shared "after you install" steps. */
+:root{
+  --bg:#EEF0F1; --surface:#FFFFFF; --ink:#1B2027; --muted:#56616C; --line:#D6DCE1;
+  --board:#C79E70; --board-hole:#8E6A47; --board-ink:#2A1D10;
+  --liquid:#1AAE96; --accent:#0C7F6E; --accent-ink:#FFFFFF;
+  --chip:#E7F3F0; --chip-ink:#0B5E52; --warn-bg:#FCEFD3; --warn:#7A4800;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101419; --surface:#1A2027; --ink:#E6EBF0; --muted:#9AA6B2; --line:#2E3740;
+  --board:#6E5235; --board-hole:#4A3522; --board-ink:#F6E7D2;
+  --liquid:#27C2A7; --accent:#2CC4AA; --accent-ink:#06211C;
+  --chip:#173530; --chip-ink:#8FE3D3; --warn-bg:#35280F; --warn:#F2B24C; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#101419; --surface:#1A2027; --ink:#E6EBF0; --muted:#9AA6B2; --line:#2E3740;
+  --board:#6E5235; --board-hole:#4A3522; --board-ink:#F6E7D2;
+  --liquid:#27C2A7; --accent:#2CC4AA; --accent-ink:#06211C;
+  --chip:#173530; --chip-ink:#8FE3D3; --warn-bg:#35280F; --warn:#F2B24C; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.5}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:880px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+
+.band{background-color:var(--board);background-image:radial-gradient(circle at 11px 11px, var(--board-hole) 0 2.3px, transparent 2.8px);background-size:22px 22px;color:var(--board-ink)}
+.band .wrap{padding-block:28px 30px;display:flex;align-items:center;gap:20px}
+.bag{width:68px;flex-shrink:0;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
+.bag .film{fill:rgba(255,255,255,.62);stroke:#7E8B97;stroke-width:1.5}
+.bag .zip{fill:#DDE3E8;stroke:#7E8B97;stroke-width:1.5}
+.bag .liq{fill:var(--liquid)}
+.hero-text{min-width:0;background:rgba(255,255,255,.88);color:#1B2027;border-radius:12px;padding:12px 16px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,5vw,36px);line-height:1.05;margin:0;text-wrap:balance}
+.hero-text p{margin:4px 0 0;color:#46505A;max-width:52ch}
+
+main.wrap{padding-block:24px 40px;display:flex;flex-direction:column;gap:28px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h2{font-family:var(--f-display);font-weight:700;font-size:22px;margin:0}
+.tag{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--chip);color:var(--chip-ink);border-radius:99px;padding:3px 10px;white-space:nowrap}
+.qr{display:flex;gap:14px;align-items:center}
+.qr-tile{background:#FFFFFF;border-radius:12px;padding:8px;border:1px solid var(--line);width:148px;flex-shrink:0}
+.qr-svg{display:block;width:100%;height:auto}
+.qr p{margin:0;color:var(--muted);font-size:14px;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-weight:600;border-radius:12px;padding:12px 16px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-size:15.5px;cursor:pointer;font-family:inherit}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btns .btn{flex:1 1 180px}
+ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+ol li::marker{font-family:var(--f-mono);font-weight:700;color:var(--accent)}
+.link-box{display:flex;gap:8px;align-items:stretch}
+.link-box code{flex:1;min-width:0;font-family:var(--f-mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;overflow-wrap:anywhere;user-select:all}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:14px}
+.after{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.after p{margin:0;color:var(--muted);max-width:65ch}
+.fine{color:var(--muted);font-size:13.5px;margin:0;max-width:65ch}
+</style>
+
+<header class="band">
+  <div class="wrap">
+    <svg class="bag" viewBox="0 0 100 142" aria-hidden="true">
+      <defs><clipPath id="b"><path d="M14 26H86V120Q86 136 70 136H30Q14 136 14 120Z"/></clipPath></defs>
+      <path class="film" d="M14 26H86V120Q86 136 70 136H30Q14 136 14 120Z"/>
+      <g clip-path="url(#b)"><path class="liq" d="M0 82q12.5-5 25 0t25 0 25 0 25 0V150H0Z"/></g>
+      <rect class="zip" x="10" y="3" width="80" height="25" rx="3"/>
+      <circle cx="50" cy="13" r="5.5" fill="#6F4E30"/><circle cx="50" cy="13" r="3.2" fill="#B8C0C8"/>
+    </svg>
+    <div class="hero-text">
+      <h1>Install Board Tracker</h1>
+      <p>Track inventory in grams, who took each bag, and who still owes. Pick your phone below. It takes about two minutes.</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="cards" aria-label="Install options">
+    <article class="card" aria-labelledby="android-h">
+      <div class="card-h"><h2 id="android-h">Android</h2><span class="tag">Installs as an app</span></div>
+      <div class="qr">
+        <div class="qr-tile"><svg viewBox="0 0 41 41" role="img" aria-label="QR code to download Board Tracker for Android" class="qr-svg" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M0 0h41v41h-41z"/><path class="qrline" stroke="#14181d" d="M2 2.5h7m2 0h4m1 0h2m3 0h4m5 0h1m1 0h7m-37 1h1m5 0h1m7 0h1m1 0h1m1 0h1m1 0h3m1 0h4m2 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m1 0h1m2 0h2m2 0h2m4 0h1m2 0h1m3 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h3m5 0h1m1 0h2m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h3m2 0h6m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h3m1 0h2m2 0h1m1 0h1m1 0h1m4 0h1m1 0h2m1 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h4m6 0h2m1 0h4m1 0h3m-29 1h1m1 0h5m2 0h4m1 0h1m2 0h1m3 0h2m2 0h4m1 0h5m-33 1h3m2 0h1m3 0h2m2 0h12m2 0h1m1 0h1m3 0h1m-35 1h1m1 0h6m3 0h1m5 0h1m5 0h4m1 0h4m1 0h3m-34 1h1m3 0h1m1 0h6m1 0h1m1 0h6m2 0h1m1 0h3m1 0h2m2 0h1m-35 1h3m1 0h2m1 0h1m2 0h3m2 0h1m1 0h2m3 0h4m1 0h2m1 0h1m1 0h3m-37 1h1m1 0h1m1 0h1m2 0h1m2 0h3m2 0h7m1 0h1m1 0h1m2 0h2m1 0h1m4 0h1m-37 1h3m2 0h3m1 0h2m2 0h1m1 0h1m1 0h2m2 0h1m5 0h1m3 0h3m1 0h2m-36 1h2m1 0h1m4 0h3m1 0h3m4 0h3m1 0h1m2 0h2m1 0h3m2 0h2m-37 1h2m4 0h5m1 0h2m2 0h1m1 0h1m3 0h1m3 0h2m1 0h2m3 0h1m1 0h1m-36 1h3m3 0h1m7 0h1m1 0h3m2 0h2m2 0h1m1 0h1m1 0h2m1 0h1m1 0h1m-33 1h2m1 0h1m5 0h2m1 0h4m3 0h1m1 0h1m2 0h2m6 0h2m-35 1h4m1 0h3m1 0h2m2 0h1m5 0h2m3 0h2m2 0h2m4 0h1m-36 1h1m2 0h5m2 0h1m1 0h8m1 0h1m1 0h4m1 0h2m1 0h3m-33 1h2m5 0h1m2 0h2m1 0h2m2 0h3m1 0h1m1 0h2m1 0h2m3 0h1m-33 1h1m4 0h7m2 0h1m2 0h1m1 0h1m3 0h2m1 0h1m1 0h5m1 0h2m-37 1h1m2 0h3m1 0h1m1 0h2m3 0h1m3 0h4m1 0h1m4 0h1m2 0h2m2 0h2m-34 1h1m2 0h2m1 0h1m1 0h2m2 0h1m2 0h3m1 0h1m2 0h2m1 0h4m2 0h3m-37 1h4m1 0h1m3 0h3m1 0h4m1 0h2m1 0h1m1 0h2m1 0h3m1 0h2m-32 1h1m1 0h2m2 0h2m1 0h1m1 0h1m1 0h2m2 0h2m2 0h2m2 0h1m1 0h2m1 0h2m1 0h4m-37 1h1m2 0h1m3 0h2m1 0h2m4 0h1m1 0h5m7 0h2m1 0h1m-34 1h1m1 0h1m3 0h1m2 0h1m2 0h1m3 0h2m4 0h1m1 0h9m1 0h2m-28 1h2m1 0h1m1 0h2m2 0h3m1 0h1m1 0h1m2 0h3m3 0h2m2 0h1m-37 1h7m2 0h1m1 0h3m1 0h3m2 0h1m1 0h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h3m-37 1h1m5 0h1m1 0h3m1 0h1m1 0h1m1 0h4m1 0h2m1 0h1m1 0h3m3 0h2m-34 1h1m1 0h3m1 0h1m1 0h2m1 0h2m1 0h3m4 0h3m1 0h1m1 0h6m1 0h1m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h3m2 0h4m4 0h1m1 0h3m1 0h1m3 0h1m-37 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m1 0h4m1 0h2m4 0h1m1 0h1m4 0h4m-37 1h1m5 0h1m2 0h4m1 0h2m2 0h2m1 0h2m1 0h1m2 0h1m4 0h2m2 0h1m-37 1h7m1 0h2m2 0h4m3 0h2m1 0h5m2 0h2m1 0h1m1 0h3"/></svg></div>
+        <p>On a computer or another screen? Scan this with your Android camera. On your phone already? Tap the button.</p>
+      </div>
+      <a class="btn" href="https://expo.dev/artifacts/eas/tsqHk2bG2XBEaG1f65TKxFICQf6kxZs9U4v8SQrgKf8.apk" target="_blank" rel="noopener">Download for Android</a>
+      <ol>
+        <li>Open the downloaded <b>Board Tracker</b> file.</li>
+        <li>If Android blocks it, tap <b>Settings</b>, turn on <b>Allow from this source</b>, then go back and tap <b>Install</b>.</li>
+        <li>If Play Protect warns you, tap <b>More details → Install anyway</b>. It shows this for any app that isn't from the Play Store.</li>
+      </ol>
+    </article>
+
+    <article class="card" aria-labelledby="ios-h">
+      <div class="card-h"><h2 id="ios-h">iPhone</h2><span class="tag">Runs in Expo Go</span></div>
+      <div class="qr">
+        <div class="qr-tile"><svg viewBox="0 0 41 41" role="img" aria-label="QR code to open Board Tracker in Expo Go" class="qr-svg" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><path fill="#fff" d="M0 0h41v41h-41z"/><path class="qrline" stroke="#14181d" d="M2 2.5h7m3 0h2m1 0h2m3 0h1m1 0h4m4 0h1m1 0h7m-37 1h1m5 0h1m6 0h3m3 0h1m5 0h3m2 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m1 0h4m4 0h1m1 0h4m6 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h4m3 0h2m1 0h1m1 0h3m2 0h1m1 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h2m1 0h2m1 0h1m3 0h1m1 0h2m2 0h5m1 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-29 1h1m2 0h2m1 0h1m6 0h1m1 0h1m3 0h2m-29 1h1m1 0h5m5 0h1m1 0h2m2 0h2m2 0h1m2 0h3m2 0h5m-34 1h4m3 0h1m4 0h1m1 0h2m5 0h4m2 0h2m5 0h1m-36 1h2m1 0h1m2 0h1m1 0h2m3 0h1m7 0h2m2 0h6m1 0h1m2 0h2m-34 1h1m3 0h2m1 0h1m3 0h1m1 0h1m1 0h1m2 0h2m3 0h2m1 0h3m4 0h1m-37 1h1m2 0h1m2 0h1m5 0h1m4 0h2m1 0h1m3 0h2m1 0h1m1 0h2m1 0h3m-35 1h3m4 0h1m1 0h1m2 0h3m1 0h4m1 0h3m2 0h1m1 0h2m1 0h1m1 0h1m1 0h1m-35 1h1m1 0h5m1 0h1m3 0h1m1 0h3m6 0h1m1 0h2m2 0h1m1 0h2m2 0h1m-36 1h3m1 0h1m2 0h2m1 0h1m2 0h5m1 0h2m2 0h1m1 0h3m1 0h4m1 0h2m-37 1h1m4 0h2m1 0h3m3 0h1m1 0h1m5 0h1m1 0h4m2 0h1m1 0h1m1 0h3m-36 1h1m1 0h1m3 0h4m4 0h1m1 0h2m2 0h1m1 0h1m1 0h1m2 0h2m1 0h1m3 0h1m-36 1h2m2 0h3m2 0h1m1 0h3m1 0h2m3 0h1m1 0h1m4 0h1m3 0h2m2 0h2m-36 1h1m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h3m4 0h2m2 0h1m2 0h1m1 0h2m-37 1h2m1 0h1m2 0h6m1 0h1m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m3 0h2m1 0h1m1 0h3m-29 1h6m5 0h1m1 0h1m1 0h4m1 0h2m3 0h2m-35 1h1m1 0h1m3 0h2m1 0h2m1 0h1m1 0h2m2 0h1m1 0h3m3 0h2m1 0h3m1 0h4m-36 1h3m1 0h1m1 0h1m2 0h1m1 0h1m1 0h3m3 0h5m3 0h2m1 0h1m1 0h1m2 0h1m-37 1h1m5 0h1m1 0h2m3 0h3m2 0h3m1 0h1m1 0h2m4 0h1m1 0h5m-37 1h2m1 0h1m1 0h1m1 0h1m2 0h2m2 0h4m1 0h5m4 0h2m1 0h1m-32 1h1m1 0h9m7 0h1m1 0h3m2 0h4m1 0h2m3 0h2m-37 1h1m2 0h1m1 0h1m2 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h1m-34 1h1m4 0h2m2 0h1m1 0h1m1 0h1m3 0h1m4 0h1m2 0h1m1 0h6m1 0h1m-27 1h3m1 0h1m3 0h4m1 0h1m1 0h6m3 0h1m1 0h2m-36 1h7m4 0h2m2 0h1m1 0h1m4 0h1m3 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m-37 1h1m5 0h1m1 0h1m3 0h1m2 0h1m1 0h5m1 0h2m1 0h3m3 0h2m-34 1h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h3m5 0h1m1 0h13m-37 1h1m1 0h3m1 0h1m1 0h3m1 0h2m1 0h1m2 0h4m1 0h1m4 0h6m2 0h1m-37 1h1m1 0h3m1 0h1m1 0h4m1 0h4m1 0h1m1 0h2m2 0h2m2 0h1m2 0h1m2 0h3m-37 1h1m5 0h1m2 0h1m3 0h1m1 0h1m5 0h3m2 0h4m1 0h2m3 0h1m-37 1h7m1 0h2m1 0h10m2 0h4m2 0h1m1 0h6"/></svg></div>
+        <p>After installing Expo Go, point your iPhone Camera at this code and tap the banner that appears.</p>
+      </div>
+      <div class="btns">
+        <a class="btn" href="https://apps.apple.com/app/expo-go/id982107779" target="_blank" rel="noopener">Get Expo Go</a>
+        <button class="btn ghost" id="copyExp" type="button">Copy app link</button>
+      </div>
+      <div class="link-box"><code id="expLink">exp://u.expo.dev/973c30f2-6ea6-494d-8a0d-f4e5e53ecf07?channel-name=preview</code></div>
+      <ol>
+        <li>Install <b>Expo Go</b> from the App Store.</li>
+        <li>Scan the code with your Camera, or copy the link above, paste it into Notes and tap it.</li>
+        <li>Board Tracker opens inside Expo Go. Next time, open Expo Go and pick it from your recent projects.</li>
+      </ol>
+    </article>
+  </section>
+
+  <section class="after" aria-labelledby="after-h">
+    <h2 id="after-h">After you install</h2>
+    <ol>
+      <li>Open Board Tracker and tap <b>Create account</b>.</li>
+      <li>Tap <b>Join with code</b> and enter your name.</li>
+      <li>Enter the <b>invite code</b> from the person who invited you. It looks like <span style="font-family:var(--f-mono);white-space:nowrap">PEG-XXXXXX</span>.</li>
+    </ol>
+    <p>You only see a board after entering its invite code. The app updates itself, so there's nothing to reinstall when new features arrive.</p>
+  </section>
+
+  <p class="fine">Forgot your password? Tap <b>Forgot password?</b> on the sign-in screen and open the email's link on the same phone.</p>
+</main>
+
+<script>
+(function(){
+  var btn = document.getElementById('copyExp');
+  var code = document.getElementById('expLink');
+  function selectIt(){ var r=document.createRange(); r.selectNodeContents(code); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }
+  btn.addEventListener('click', function(){
+    var done = function(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy app link'; }, 2000); };
+    try {
+      navigator.clipboard.writeText(code.textContent).then(done, function(){ selectIt(); btn.textContent = 'Link selected, copy it'; });
+    } catch (e) { selectIt(); btn.textContent = 'Link selected, copy it'; }
+  });
+})();
+</script>
