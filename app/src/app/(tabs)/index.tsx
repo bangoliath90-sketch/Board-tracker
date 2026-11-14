@@ -15,7 +15,10 @@ export default function BoardScreen() {
   const { board, bags, totals, reload } = useBoard();
   const [width, setWidth] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const hanging = bags.filter((b) => b.status === 'on_board');
+  // Smallest to largest; bags of the same size stay in the order they were hung.
+  const hanging = bags
+    .filter((b) => b.status === 'on_board')
+    .sort((a, b) => a.grams - b.grams || a.created_at.localeCompare(b.created_at));
   const tileW = width ? (width - GAP * (COLUMNS - 1)) / COLUMNS : 0;
 
   const stat = (label: string, value: string, color?: string) => (
