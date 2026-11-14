@@ -12,7 +12,10 @@ export default function StockEntry() {
   const toast = useToast();
   const { addStock, updateStock, deleteStock, stock, totals } = useBoard();
   const existing = params.id ? stock.find((s) => s.id === params.id) : undefined;
-  const kind: 'restock' | 'adjust' = existing?.kind ?? (params.kind === 'adjust' ? 'adjust' : 'restock');
+  const kind: 'restock' | 'adjust' | 'loss' =
+    existing?.kind ?? (params.kind === 'adjust' ? 'adjust' : params.kind === 'loss' ? 'loss' : 'restock');
+  const unitEntry = existing?.item === 'unit';
+  const amountLabel = unitEntry ? (kind === 'loss' ? 'Units lost' : 'Units') : kind === 'loss' ? 'Grams lost' : 'Grams';
 
   const [dir, setDir] = useState<'add' | 'remove'>(existing ? (existing.grams >= 0 ? 'add' : 'remove') : 'remove');
   const [g, setG] = useState(existing ? String(Math.abs(existing.grams)) : '');
@@ -33,20 +36,24 @@ export default function StockEntry() {
   async function save() {
     setError(null);
     const amount = parseAmount(g);
-    if (amount == null || amount <= 0) return setError('Enter the number of grams.');
+    if (amount == null || amount <= 0) return setError(unitEntry ? 'Enter the number of units.' : 'Enter the number of grams.');
     const c = parseAmount(cost);
     if (cost.trim() && (c == null || c < 0)) return setError('Enter what you paid as a number, or leave it blank.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return setError('Enter the date as YYYY-MM-DD.');
-    const signed = kind === 'restock' || dir === 'add' ? amount : -amount;
+    const signed = kind === 'restock' || (kind === 'adjust' && dir === 'add') ? amount : -amount;
     const paid = kind === 'restock' ? c : null;
     setBusy(true);
     try {
       if (existing) {
         await updateStock(existing.id, { grams: signed, cost: paid, note, date });
-        toast('Entry updated.');
+        toast(kind === 'loss' ? 'Loss updated.' : 'Entry updated.');
       } else {
         await addStock({ kind, grams: signed, cost: paid, note, date });
-        toast(`${signed >= 0 ? 'Added' : 'Removed'} ${grams(Math.abs(signed))}. On hand is now ${grams(totals.onHand + signed)}.`);
+        toast(
+          kind === 'loss'
+            ? `Recorded a loss of ${grams(amount)}. On hand is now ${grams(totals.onHand + signed)}.`
+            : `${signed >= 0 ? 'Added' : 'Removed'} ${grams(Math.abs(signed))}. On hand is now ${grams(totals.onHand + signed)}.`,
+        );
       }
       router.back();
     } catch (e) {
@@ -56,7 +63,12 @@ export default function StockEntry() {
   }
 
   const confirmDelete = () =>
-    Alert.alert('Delete this entry?', `Your on-hand total changes by ${grams(Math.abs(existing!.grams))}.`, [
+    Alert.alert(
+      'Delete this entry?',
+      unitEntry
+        ? 'This only removes the record. It does not put units back in the box.'
+        : `Your on-hand total changes by ${grams(Math.abs(existing!.grams))}.`,
+      [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -71,9 +83,12 @@ export default function StockEntry() {
           }
         },
       },
-    ]);
+      ],
+    );
 
-  const title = existing ? (kind === 'restock' ? 'Edit restock' : 'Edit adjustment') : kind === 'restock' ? 'Add restock' : 'Adjust inventory';
+  const title = existing
+    ? { restock: 'Edit restock', adjust: 'Edit adjustment', loss: 'Edit loss' }[kind]
+    : { restock: 'Add restock', adjust: 'Adjust inventory', loss: 'Record loss' }[kind];
 
   return (
     <Page>
@@ -82,7 +97,9 @@ export default function StockEntry() {
         <Text style={t.muted}>
           {kind === 'restock'
             ? 'Add grams you received. Use this for your starting total too. Enter what you paid to see profit.'
-            : 'Fix your total after a scale correction, a loss, or a recount.'}
+            : kind === 'loss'
+              ? 'Record grams lost from your unbagged stock: a spill, damage, or anything you can\'t sell. It comes off your on-hand total and counts against profit.'
+              : 'Fix your total after a scale correction or a recount. Use Record loss for product you lost.'}
         </Text>
       ) : null}
       {kind === 'adjust' ? (
@@ -98,12 +115,22 @@ export default function StockEntry() {
           />
         </View>
       ) : null}
-      <Field label="Grams" value={g} onChangeText={setG} keyboardType="decimal-pad" mono autoFocus={!existing} />
+      <Field label={amountLabel} value={g} onChangeText={setG} keyboardType="decimal-pad" mono autoFocus={!existing} />
       {kind === 'restock' ? <Field label="You paid ($)" value={cost} onChangeText={setCost} keyboardType="decimal-pad" placeholder="Optional" mono /> : null}
-      <Field label={kind === 'restock' ? 'Note' : 'Reason'} value={note} onChangeText={setNote} placeholder={kind === 'restock' ? 'Optional' : 'e.g. scale correction'} />
+      <Field
+        label={kind === 'restock' ? 'Note' : 'Reason'}
+        value={note}
+        onChangeText={setNote}
+        placeholder={kind === 'restock' ? 'Optional' : kind === 'loss' ? 'e.g. spilled, damaged' : 'e.g. scale correction'}
+      />
       <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} mono autoCorrect={false} />
       {error ? <Notice text={error} tone="late" /> : null}
-      <Button title={existing ? 'Save changes' : kind === 'restock' ? 'Add to inventory' : 'Save adjustment'} variant="primary" busy={busy} onPress={save} />
+      <Button
+        title={existing ? 'Save changes' : { restock: 'Add to inventory', adjust: 'Save adjustment', loss: 'Record loss' }[kind]}
+        variant="primary"
+        busy={busy}
+        onPress={save}
+      />
       {existing ? <Button title="Delete entry" variant="danger" onPress={confirmDelete} /> : null}
     </Page>
   );

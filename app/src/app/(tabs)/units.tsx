@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Label, Page, useText } from '../../components/ui';
+import { SelectedMark, SelectionBar } from '../../components/SelectionBar';
+import { Button, Card, Label, Page, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
 import { shortDate, usd } from '../../lib/format';
 import { DEFAULT_UNIT_CAPACITY, DEFAULT_UNIT_PRICE } from '../../lib/units';
@@ -13,7 +14,10 @@ const GAP = 6;
 export default function UnitsScreen() {
   const c = useColors();
   const t = useText();
-  const { board, bags, stock } = useBoard();
+  const toast = useToast();
+  const { board, bags, stock, returnToStock, markLost } = useBoard();
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [width, setWidth] = useState(0);
   const capacity = board?.unit_capacity ?? DEFAULT_UNIT_CAPACITY;
   const price = board?.unit_price ?? DEFAULT_UNIT_PRICE;
@@ -26,6 +30,19 @@ export default function UnitsScreen() {
   const value = inBox.reduce((s, b) => s + b.price, 0);
   const slotW = width ? (width - GAP * (COLUMNS - 1)) / COLUMNS : 0;
   const slots = Array.from({ length: Math.max(capacity, inBox.length) }, (_, i) => inBox[i] ?? null);
+  const picked = inBox.filter((u) => selected.has(u.id));
+  const n = picked.length;
+  const toggle = (id: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const finish = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
 
   return (
     <Page>
@@ -48,7 +65,33 @@ export default function UnitsScreen() {
         Each unit is {usd(price)} unless you change it. Tap a unit to record who took it.
         {owed.length ? ` ${owed.length} unit${owed.length === 1 ? ' is' : 's are'} on the Owed page.` : ''}
       </Text>
-      <Button title="Add units" variant="primary" onPress={() => router.push('/add-units')} />
+      {selecting ? (
+        <SelectionBar
+          count={n}
+          summary={`${n} unit${n === 1 ? '' : 's'} · ${usd(picked.reduce((s, u) => s + u.price, 0))}`}
+          allSelected={n === inBox.length && n > 0}
+          returnLabel="Remove from box"
+          returnMessage={`Take ${n} unit${n === 1 ? '' : 's'} out of the box? They're removed without being recorded as a loss.`}
+          onSelectAll={() => setSelected(new Set(inBox.map((u) => u.id)))}
+          onClear={() => setSelected(new Set())}
+          onDone={finish}
+          onReturn={async () => {
+            await returnToStock(picked.map((u) => u.id));
+            toast(`Removed ${n} unit${n === 1 ? '' : 's'} from the box.`);
+            finish();
+          }}
+          onLost={async (reason) => {
+            await markLost(picked.map((u) => u.id), reason);
+            toast(`Recorded ${n} unit${n === 1 ? '' : 's'} as lost.`);
+            finish();
+          }}
+        />
+      ) : (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Button title="Add units" variant="primary" style={{ flex: 1 }} onPress={() => router.push('/add-units')} />
+          {inBox.length > 0 ? <Button title="Select" style={{ flex: 1 }} onPress={() => setSelecting(true)} /> : null}
+        </View>
+      )}
 
       <View style={[styles.box, { borderColor: c.boardFrame, backgroundColor: c.surface2 }]}>
         <View style={styles.grid} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
@@ -58,14 +101,18 @@ export default function UnitsScreen() {
                 <Pressable
                   key={unit.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Unit ${i + 1}, ${usd(unit.price)}. Open unit.`}
-                  onPress={() => router.push(`/bag/${unit.id}`)}
+                  accessibilityLabel={`Unit ${i + 1}, ${usd(unit.price)}. ${selecting ? (selected.has(unit.id) ? 'Selected.' : 'Not selected.') : 'Open unit.'}`}
+                  accessibilityState={selecting ? { selected: selected.has(unit.id) } : undefined}
+                  onPress={() => (selecting ? toggle(unit.id) : router.push(`/bag/${unit.id}`))}
                   style={({ pressed }) => [
                     styles.slot,
                     { width: slotW, backgroundColor: c.liquid, borderColor: c.liquidDeep },
+                    selecting && !selected.has(unit.id) && { opacity: 0.5 },
+                    selecting && selected.has(unit.id) && { borderColor: c.accent, borderWidth: 2.5 },
                     pressed && { opacity: 0.7 },
                   ]}
                 >
+                  {selecting && selected.has(unit.id) ? <SelectedMark on /> : null}
                   <Text style={styles.num}>{i + 1}</Text>
                   <Text style={styles.price}>{usd(unit.price)}</Text>
                 </Pressable>
@@ -74,6 +121,7 @@ export default function UnitsScreen() {
                   key={`empty-${i}`}
                   accessibilityRole="button"
                   accessibilityLabel={`Empty slot ${i + 1}. Add units.`}
+                  disabled={selecting}
                   onPress={() => router.push('/add-units')}
                   style={[styles.slot, styles.empty, { width: slotW, borderColor: c.line }]}
                 >

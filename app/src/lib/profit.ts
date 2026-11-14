@@ -55,9 +55,10 @@ export function periodRange(p: Period, now = new Date()): { start: Date | null; 
   return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: first };
 }
 
-const inRange = (iso: string | null, r: { start: Date | null; end: Date | null }) => {
+const inRange = (iso: string | null | undefined, r: { start: Date | null; end: Date | null }) => {
   if (!iso) return false;
-  const t = new Date(iso).getTime();
+  // A plain YYYY-MM-DD date means that local day, not midnight UTC.
+  const t = (iso.length === 10 ? new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) : new Date(iso)).getTime();
   return (!r.start || t >= r.start.getTime()) && (!r.end || t < r.end.getTime());
 };
 
@@ -76,6 +77,14 @@ export type Summary = {
   /** Bags taken in the period that are still unpaid. */
   stillOwed: number;
   pricePerGram: number | null;
+  /** Grams lost from stock or the board, and written-off bags. */
+  lostGrams: number;
+  /** Units lost from the box, and written-off units. */
+  lostUnits: number;
+  /** Money owed that was written off as never paid. */
+  writtenOff: number;
+  /** What the lost product cost you; null if a cost is unknown. */
+  lossCost: number | null;
 };
 
 export function summarize(
@@ -83,10 +92,11 @@ export function summarize(
   cpg: number | null,
   r: { start: Date | null; end: Date | null },
   cpu: number | null = null,
+  stock: StockEntry[] = [],
 ): Summary {
   let bagsSold = 0, gramsSold = 0, unitsSold = 0, sales = 0, gramSales = 0, collected = 0, stillOwed = 0;
   for (const b of bags) {
-    if (b.status !== 'on_board' && inRange(b.taken_at, r)) {
+    if ((b.status === 'taken' || b.status === 'paid') && inRange(b.taken_at, r)) {
       if (b.item === 'unit') unitsSold += 1;
       else {
         bagsSold += 1;
@@ -98,11 +108,30 @@ export function summarize(
     }
     if (b.status === 'paid' && inRange(b.paid_at, r)) collected += b.price;
   }
+  // Losses: stock loss entries, plus taken items written off as never paid.
+  let lostGrams = 0, lostUnits = 0, writtenOff = 0;
+  for (const s of stock) {
+    if (s.kind === 'loss' && inRange(s.entry_date, r)) {
+      if (s.item === 'unit') lostUnits += -s.grams;
+      else lostGrams += -s.grams;
+    }
+  }
+  for (const b of bags) {
+    if (b.status === 'lost' && inRange(b.lost_at, r)) {
+      if (b.item === 'unit') lostUnits += 1;
+      else lostGrams += b.grams;
+      writtenOff += b.price;
+    }
+  }
+  const lossGramCost = lostGrams > 0 ? (cpg == null ? null : lostGrams * cpg) : 0;
+  const lossUnitCost = lostUnits > 0 ? (cpu == null ? null : lostUnits * cpu) : 0;
+  const lossCost = lossGramCost == null || lossUnitCost == null ? null : lossGramCost + lossUnitCost;
+
   // Cost is known only if every kind of item sold has a known cost.
   const gramCost = gramsSold > 0 ? (cpg == null ? null : gramsSold * cpg) : 0;
   const unitCost = unitsSold > 0 ? (cpu == null ? null : unitsSold * cpu) : 0;
   const cost = gramCost == null || unitCost == null || (cpg == null && cpu == null) ? null : gramCost + unitCost;
-  const profit = cost == null ? null : sales - cost;
+  const profit = cost == null || lossCost == null ? null : sales - cost - lossCost;
   return {
     bagsSold,
     gramsSold,
@@ -114,11 +143,15 @@ export function summarize(
     collected,
     stillOwed,
     pricePerGram: gramsSold > 0 ? gramSales / gramsSold : null,
+    lostGrams,
+    lostUnits,
+    writtenOff,
+    lossCost,
   };
 }
 
 /** Sales and profit for each of the last `weeks` weeks, oldest first. */
-export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Date(), cpu: number | null = null) {
+export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Date(), cpu: number | null = null, stock: StockEntry[] = []) {
   const thisWeek = startOfWeek(now);
   const out: { start: Date; sales: number; profit: number | null }[] = [];
   for (let i = weeks - 1; i >= 0; i--) {
@@ -126,7 +159,7 @@ export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Dat
     start.setDate(start.getDate() - 7 * i);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
-    const s = summarize(bags, cpg, { start, end }, cpu);
+    const s = summarize(bags, cpg, { start, end }, cpu, stock);
     out.push({ start, sales: s.sales, profit: s.profit });
   }
   return out;

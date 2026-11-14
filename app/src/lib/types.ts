@@ -1,4 +1,4 @@
-export type BagStatus = 'on_board' | 'taken' | 'paid';
+export type BagStatus = 'on_board' | 'taken' | 'paid' | 'lost';
 /** 'grams' = a liquid bag on the pegboard; 'unit' = one item in the units box. */
 export type ItemKind = 'grams' | 'unit';
 
@@ -29,13 +29,15 @@ export type Bag = {
   paid_at: string | null;
   notes: string | null;
   reminded_at?: string | null;
+  /** When a taken item was written off as never paid. */
+  lost_at?: string | null;
   created_at: string;
 };
 
 export type StockEntry = {
   id: string;
   board_id: string;
-  kind: 'restock' | 'adjust';
+  kind: 'restock' | 'adjust' | 'loss';
   item: ItemKind;
   /** Grams, or the number of units for unit restocks. */
   grams: number;

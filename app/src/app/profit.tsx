@@ -15,8 +15,8 @@ export default function ProfitScreen() {
 
   const cpg = useMemo(() => costPerGram(stock), [stock]);
   const cpu = useMemo(() => costPerUnit(stock), [stock]);
-  const s = useMemo(() => summarize(bags, cpg, periodRange(period), cpu), [bags, cpg, cpu, period]);
-  const weeks = useMemo(() => weekly(bags, cpg, 8, new Date(), cpu), [bags, cpg, cpu]);
+  const s = useMemo(() => summarize(bags, cpg, periodRange(period), cpu, stock), [bags, cpg, cpu, period, stock]);
+  const weeks = useMemo(() => weekly(bags, cpg, 8, new Date(), cpu, stock), [bags, cpg, cpu, stock]);
   const maxSales = Math.max(1, ...weeks.map((w) => w.sales));
 
   const stat = (label: string, value: string, color?: string) => (
@@ -62,6 +62,9 @@ export default function ProfitScreen() {
           ['Average price per gram', s.pricePerGram == null ? '—' : `${usd(Math.round(s.pricePerGram * 100) / 100)}/g`],
           ['Your cost per gram', cpg == null ? '—' : `${usd(Math.round(cpg * 100) / 100)}/g`],
           ['Your cost per unit', cpu == null ? '—' : usd(Math.round(cpu * 100) / 100)],
+          ['Lost', [s.lostGrams ? grams(s.lostGrams) : '', s.lostUnits ? `${s.lostUnits} unit${s.lostUnits === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ') || 'None'],
+          ['Cost of losses', s.lossCost == null ? '—' : usd(Math.round(s.lossCost * 100) / 100)],
+          ['Written off (never paid)', usd(s.writtenOff)],
         ].map(([k, v], i, arr) => (
           <View key={k} style={[styles.kv, i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.line }]}>
             <Text style={t.muted}>{k}</Text>
@@ -70,7 +73,7 @@ export default function ProfitScreen() {
         ))}
       </Card>
       <Text style={t.muted}>
-        Sales count every bag taken in the period, paid or not. Money collected counts payments received in the period.
+        Sales count every bag and unit taken in the period, paid or not, except ones written off. Profit is sales minus what those items cost you, minus what your losses cost you. Money collected counts payments received in the period.
       </Text>
 
       <Label>Last 8 weeks</Label>

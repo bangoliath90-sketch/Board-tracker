@@ -50,7 +50,13 @@ type BoardState = {
   markReminded: (bagId: string) => Promise<void>;
   addUnits: (count: number, price: number, cost: number | null, note: string) => Promise<void>;
   saveUnitPrice: (price: number) => Promise<void>;
-  addStock: (entry: { kind: 'restock' | 'adjust'; grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
+  /** Take bags/units off the board or out of the box; bag grams return to unbagged stock. */
+  returnToStock: (ids: string[]) => Promise<void>;
+  /** Remove bags/units from the board or box and record them as a loss. */
+  markLost: (ids: string[], reason: string) => Promise<void>;
+  writeOff: (bagId: string) => Promise<void>;
+  undoWriteOff: (bagId: string) => Promise<void>;
+  addStock: (entry: { kind: 'restock' | 'adjust' | 'loss'; grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
   savePresets: (presets: Preset[]) => Promise<void>;
   leaveBoard: () => Promise<void>;
 };
@@ -382,6 +388,55 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       await refresh('bags', 'stock_entries');
     },
 
+    async returnToStock(ids) {
+      if (!ids.length) return;
+      check(await supabase.from('bags').delete().in('id', ids).eq('status', 'on_board'));
+      await refresh('bags');
+    },
+
+    async markLost(ids, reason) {
+      const id = requireBoard();
+      const chosen = bags.filter((b) => ids.includes(b.id) && b.status === 'on_board');
+      if (!chosen.length) return;
+      const gramBags = chosen.filter((b) => b.item !== 'unit');
+      const units = chosen.filter((b) => b.item === 'unit');
+      const note = reason.trim();
+      const entries = [];
+      if (gramBags.length) {
+        const g = round1(gramBags.reduce((s, b) => s + b.grams, 0));
+        entries.push({
+          board_id: id,
+          kind: 'loss',
+          item: 'grams',
+          grams: -g,
+          note: [note, `${gramBags.length} bag${gramBags.length === 1 ? '' : 's'} from the board`].filter(Boolean).join(' · '),
+        });
+      }
+      if (units.length) {
+        entries.push({
+          board_id: id,
+          kind: 'loss',
+          item: 'unit',
+          grams: -units.length,
+          note: [note, 'from the units box'].filter(Boolean).join(' · '),
+        });
+      }
+      // Record the loss first, then remove the items, so nothing disappears unrecorded.
+      check(await supabase.from('stock_entries').insert(entries));
+      check(await supabase.from('bags').delete().in('id', chosen.map((b) => b.id)).eq('status', 'on_board'));
+      await refresh('bags', 'stock_entries');
+    },
+
+    async writeOff(bagId) {
+      check(await supabase.from('bags').update({ status: 'lost', lost_at: new Date().toISOString() }).eq('id', bagId).eq('status', 'taken'));
+      await refresh('bags');
+    },
+
+    async undoWriteOff(bagId) {
+      check(await supabase.from('bags').update({ status: 'taken', lost_at: null }).eq('id', bagId).eq('status', 'lost'));
+      await refresh('bags');
+    },
+
     async saveUnitPrice(price) {
       const id = requireBoard();
       check(await supabase.from('boards').update({ unit_price: price }).eq('id', id));
@@ -399,6 +454,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
         await supabase.from('stock_entries').insert({
           board_id: id,
           kind: entry.kind,
+          item: 'grams',
           grams: round1(entry.grams),
           cost: entry.cost,
           note: entry.note.trim() || null,

@@ -130,7 +130,7 @@ export default function PersonScreen() {
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <Text style={t.mono}>{usd(b.price)}</Text>
-                      {b.status === 'paid' ? <Pill text="Paid" tone="ok" /> : <Pill text={d.label} tone={d.tone === 'none' ? 'none' : d.tone} />}
+                      {b.status === 'paid' ? <Pill text="Paid" tone="ok" /> : b.status === 'lost' ? <Pill text="Written off" /> : <Pill text={d.label} tone={d.tone === 'none' ? 'none' : d.tone} />}
                     </View>
                   </Row>
                 );

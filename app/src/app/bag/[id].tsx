@@ -29,6 +29,7 @@ export default function BagScreen() {
   }
   if (bag.status === 'on_board') return <TakeForm bag={bag} />;
   if (bag.status === 'taken') return <OwedBag bag={bag} />;
+  if (bag.status === 'lost') return <LostBag bag={bag} />;
   return <PaidBag bag={bag} />;
 }
 
@@ -192,7 +193,7 @@ function OwedBag({ bag }: { bag: Bag }) {
   const isUnit = bag.item === 'unit';
   const t = useText();
   const toast = useToast();
-  const { board, people, personName, markPaid, undoTake, setDueDate, markReminded } = useBoard();
+  const { board, people, personName, markPaid, undoTake, setDueDate, markReminded, writeOff } = useBoard();
   const name = personName(bag.person_id);
   const person = people.find((p) => p.id === bag.person_id);
   const days = reminderDays(board);
@@ -295,6 +296,29 @@ function OwedBag({ bag }: { bag: Bag }) {
       />
       <Button title="Edit bag" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
       <Button title={isUnit ? 'Undo take · put back in the box' : 'Undo take · put back on board'} onPress={confirmUndo} />
+      <Button
+        title="Write off · never paid"
+        variant="danger"
+        onPress={() =>
+          Alert.alert(
+            `Write off ${usd(bag.price)}?`,
+            `${name} will no longer owe this. It's recorded as a loss on the Stock tab and counts against profit. You can undo it.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Write off',
+                style: 'destructive',
+                onPress: () =>
+                  run(async () => {
+                    await writeOff(bag.id);
+                    toast(`Wrote off ${usd(bag.price)} from ${name}.`);
+                    router.back();
+                  }),
+              },
+            ],
+          )
+        }
+      />
     </Page>
   );
 }
@@ -332,6 +356,46 @@ function PaidBag({ bag }: { bag: Bag }) {
           run(async () => {
             await markUnpaid(bag.id);
             toast(`Moved back to Owed. ${name} owes ${usd(bag.price)}.`);
+            router.back();
+          })
+        }
+      />
+    </Page>
+  );
+}
+
+/* ---------- written off as never paid ---------- */
+function LostBag({ bag }: { bag: Bag }) {
+  const t = useText();
+  const toast = useToast();
+  const { personName, undoWriteOff } = useBoard();
+  const name = personName(bag.person_id);
+  const { busy, error, run } = useAction();
+  return (
+    <Page>
+      <Stack.Screen options={{ title: 'Written off' }} />
+      <Hero bag={bag} subtitle={`${usd(bag.price)} · never paid`} />
+      {[
+        ['Taken by', name],
+        ['Taken', bag.taken_at ? shortDate(bag.taken_at) : '—'],
+        ['Written off', bag.lost_at ? shortDate(bag.lost_at) : '—'],
+        ['Amount', usd(bag.price)],
+        ...(bag.notes ? [['Notes', bag.notes]] : []),
+      ].map(([k, v]) => (
+        <View key={k} style={styles.kv}>
+          <Text style={t.muted}>{k}</Text>
+          <Text style={[t.strong, { flexShrink: 1, textAlign: 'right' }]}>{v}</Text>
+        </View>
+      ))}
+      <Text style={t.muted}>This is counted as a loss and no longer shows as owed.</Text>
+      {error ? <Notice text={error} tone="late" /> : null}
+      <Button
+        title={`Undo write-off · ${name} owes again`}
+        busy={busy}
+        onPress={() =>
+          run(async () => {
+            await undoWriteOff(bag.id);
+            toast(`${name} owes ${usd(bag.price)} again.`);
             router.back();
           })
         }
