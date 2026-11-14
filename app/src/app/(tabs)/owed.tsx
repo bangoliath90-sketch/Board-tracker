@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
-import { LiquidBag } from '../../components/LiquidBag';
+import { ItemIcon } from '../../components/UnitBox';
 import { Card, Page, Pill, Row, useText } from '../../components/ui';
 import { useBoard } from '../../lib/board';
 import { isReminderDue, reminderDays } from '../../lib/reminders';
-import { dueInfo, grams, shortDate, usd } from '../../lib/format';
+import { dueInfo, itemLabel, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
 
 export default function OwedScreen() {
@@ -32,11 +32,11 @@ export default function OwedScreen() {
             const d = dueInfo(b);
             return (
               <Row key={b.id} last={i === owed.length - 1} onPress={() => router.push(`/bag/${b.id}`)}>
-                <LiquidBag grams={b.grams} width={30} danger={d.tone === 'late'} />
+                <ItemIcon bag={b} width={30} danger={d.tone === 'late'} />
                 <View style={{ flex: 1 }}>
                   <Text style={t.strong}>{personName(b.person_id)}</Text>
                   <Text style={t.muted}>
-                    {grams(b.grams)} · taken {b.taken_at ? shortDate(b.taken_at) : ''}
+                    {itemLabel(b)} · taken {b.taken_at ? shortDate(b.taken_at) : ''}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>

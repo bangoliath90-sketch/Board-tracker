@@ -59,13 +59,20 @@ export function dueInfo(bag: Pick<Bag, 'due_date'>): { label: string; tone: DueT
   return { label: `Due ${shortDate(bag.due_date)}`, tone: d <= 3 ? 'soon' : 'none' };
 }
 
+/** "7 g" for a bag, "1 unit" for a unit. */
+export function itemLabel(b: Pick<Bag, 'item' | 'grams'>): string {
+  return b.item === 'unit' ? '1 unit' : grams(b.grams);
+}
+
 export function computeTotals(bags: Bag[], stock: StockEntry[]): Totals {
   let stockGrams = 0;
-  for (const s of stock) stockGrams += s.grams;
+  for (const s of stock) if (s.item !== 'unit') stockGrams += s.grams;
   let out = 0, onBoard = 0, owed = 0, collected = 0;
   for (const b of bags) {
-    if (b.status === 'on_board') onBoard += b.grams;
-    else out += b.grams;
+    if (b.item !== 'unit') {
+      if (b.status === 'on_board') onBoard += b.grams;
+      else out += b.grams;
+    }
     if (b.status === 'taken') owed += b.price;
     if (b.status === 'paid') collected += b.price;
   }

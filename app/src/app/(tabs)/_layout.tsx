@@ -64,6 +64,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="units" options={{ title: 'Units', tabBarIcon: icon('units') }} />
       <Tabs.Screen
         name="owed"
         options={{ title: 'Owed', tabBarIcon: icon('owed'), tabBarBadge: Math.max(overdue, textsDue) || undefined, tabBarBadgeStyle: { backgroundColor: c.danger } }}

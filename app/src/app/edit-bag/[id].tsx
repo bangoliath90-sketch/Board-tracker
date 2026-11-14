@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Button, Chip, Field, Label, Notice, Page, useText, useToast } from '../../components/ui';
@@ -26,17 +26,18 @@ export default function EditBag() {
     );
   }
   const taken = bag.status !== 'on_board';
+  const isUnit = bag.item === 'unit';
 
   async function save() {
     setError(null);
     const gr = parseAmount(g);
     const pr = parseAmount(price);
-    if (gr == null || gr <= 0) return setError('Enter how many grams are in the bag.');
+    if (!isUnit && (gr == null || gr <= 0)) return setError('Enter how many grams are in the bag.');
     if (pr == null || pr < 0) return setError('Enter the price.');
     setBusy(true);
     try {
-      await updateBag(bag!.id, { grams: gr, price: pr, personId: taken ? personId ?? undefined : undefined, notes });
-      toast(`Saved: ${grams(gr)} for ${usd(pr)}.`);
+      await updateBag(bag!.id, { grams: gr ?? 0, price: pr, personId: taken ? personId ?? undefined : undefined, notes });
+      toast(isUnit ? `Saved: ${usd(pr)}.` : `Saved: ${grams(gr ?? 0)} for ${usd(pr)}.`);
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Try again.');
@@ -46,13 +47,16 @@ export default function EditBag() {
 
   return (
     <Page>
-      {taken ? (
+      <Stack.Screen options={{ title: isUnit ? 'Edit unit' : 'Edit bag' }} />
+      {taken && !isUnit ? (
         <Text style={t.muted}>Changing the grams of a taken bag also changes your on-hand total.</Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Grams" value={g} onChangeText={setG} keyboardType="decimal-pad" mono />
-        </View>
+        {isUnit ? null : (
+          <View style={{ flex: 1 }}>
+            <Field label="Grams" value={g} onChangeText={setG} keyboardType="decimal-pad" mono />
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <Field label="Price ($)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" mono />
         </View>

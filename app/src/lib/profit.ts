@@ -5,10 +5,19 @@ import type { Bag, StockEntry } from './types';
  * Adjustments (losses, corrections) don't change the cost per gram.
  */
 export function costPerGram(stock: StockEntry[]): number | null {
+  return averageCost(stock, 'grams');
+}
+
+/** Average cost per unit across unit restocks where you entered what you paid. */
+export function costPerUnit(stock: StockEntry[]): number | null {
+  return averageCost(stock, 'unit');
+}
+
+function averageCost(stock: StockEntry[], item: 'grams' | 'unit'): number | null {
   let grams = 0;
   let cost = 0;
   for (const s of stock) {
-    if (s.kind === 'restock' && s.cost != null && s.grams > 0) {
+    if ((s.item ?? 'grams') === item && s.kind === 'restock' && s.cost != null && s.grams > 0) {
       grams += s.grams;
       cost += s.cost;
     }
@@ -16,9 +25,9 @@ export function costPerGram(stock: StockEntry[]): number | null {
   return grams > 0 ? cost / grams : null;
 }
 
-export function bagProfit(bag: Pick<Bag, 'grams' | 'price'>, cpg: number | null) {
-  if (cpg == null) return null;
-  const cost = bag.grams * cpg;
+export function bagProfit(bag: Pick<Bag, 'grams' | 'price' | 'item'>, cpg: number | null, cpu: number | null = null) {
+  const cost = bag.item === 'unit' ? cpu : cpg == null ? null : bag.grams * cpg;
+  if (cost == null) return null;
   return { cost, profit: bag.price - cost };
 }
 
@@ -55,6 +64,7 @@ const inRange = (iso: string | null, r: { start: Date | null; end: Date | null }
 export type Summary = {
   bagsSold: number;
   gramsSold: number;
+  unitsSold: number;
   /** Price of every bag taken in the period, paid or not. */
   sales: number;
   cost: number | null;
@@ -68,34 +78,47 @@ export type Summary = {
   pricePerGram: number | null;
 };
 
-export function summarize(bags: Bag[], cpg: number | null, r: { start: Date | null; end: Date | null }): Summary {
-  let bagsSold = 0, gramsSold = 0, sales = 0, collected = 0, stillOwed = 0;
+export function summarize(
+  bags: Bag[],
+  cpg: number | null,
+  r: { start: Date | null; end: Date | null },
+  cpu: number | null = null,
+): Summary {
+  let bagsSold = 0, gramsSold = 0, unitsSold = 0, sales = 0, gramSales = 0, collected = 0, stillOwed = 0;
   for (const b of bags) {
     if (b.status !== 'on_board' && inRange(b.taken_at, r)) {
-      bagsSold += 1;
-      gramsSold += b.grams;
+      if (b.item === 'unit') unitsSold += 1;
+      else {
+        bagsSold += 1;
+        gramsSold += b.grams;
+        gramSales += b.price;
+      }
       sales += b.price;
       if (b.status === 'taken') stillOwed += b.price;
     }
     if (b.status === 'paid' && inRange(b.paid_at, r)) collected += b.price;
   }
-  const cost = cpg == null ? null : gramsSold * cpg;
+  // Cost is known only if every kind of item sold has a known cost.
+  const gramCost = gramsSold > 0 ? (cpg == null ? null : gramsSold * cpg) : 0;
+  const unitCost = unitsSold > 0 ? (cpu == null ? null : unitsSold * cpu) : 0;
+  const cost = gramCost == null || unitCost == null || (cpg == null && cpu == null) ? null : gramCost + unitCost;
   const profit = cost == null ? null : sales - cost;
   return {
     bagsSold,
     gramsSold,
+    unitsSold,
     sales,
     cost,
     profit,
     margin: profit != null && sales > 0 ? profit / sales : null,
     collected,
     stillOwed,
-    pricePerGram: gramsSold > 0 ? sales / gramsSold : null,
+    pricePerGram: gramsSold > 0 ? gramSales / gramsSold : null,
   };
 }
 
 /** Sales and profit for each of the last `weeks` weeks, oldest first. */
-export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Date()) {
+export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Date(), cpu: number | null = null) {
   const thisWeek = startOfWeek(now);
   const out: { start: Date; sales: number; profit: number | null }[] = [];
   for (let i = weeks - 1; i >= 0; i--) {
@@ -103,7 +126,7 @@ export function weekly(bags: Bag[], cpg: number | null, weeks = 8, now = new Dat
     start.setDate(start.getDate() - 7 * i);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
-    const s = summarize(bags, cpg, { start, end });
+    const s = summarize(bags, cpg, { start, end }, cpu);
     out.push({ start, sales: s.sales, profit: s.profit });
   }
   return out;

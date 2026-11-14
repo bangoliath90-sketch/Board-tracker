@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, Chip, Label, Notice, Page, useText } from '../components/ui';
 import { useBoard } from '../lib/board';
 import { grams, usd } from '../lib/format';
-import { costPerGram, PERIODS, periodRange, summarize, weekly, type Period } from '../lib/profit';
+import { costPerGram, costPerUnit, PERIODS, periodRange, summarize, weekly, type Period } from '../lib/profit';
 import { monoFont, useColors } from '../lib/theme';
 
 export default function ProfitScreen() {
@@ -14,8 +14,9 @@ export default function ProfitScreen() {
   const [period, setPeriod] = useState<Period>('month');
 
   const cpg = useMemo(() => costPerGram(stock), [stock]);
-  const s = useMemo(() => summarize(bags, cpg, periodRange(period)), [bags, cpg, period]);
-  const weeks = useMemo(() => weekly(bags, cpg, 8), [bags, cpg]);
+  const cpu = useMemo(() => costPerUnit(stock), [stock]);
+  const s = useMemo(() => summarize(bags, cpg, periodRange(period), cpu), [bags, cpg, cpu, period]);
+  const weeks = useMemo(() => weekly(bags, cpg, 8, new Date(), cpu), [bags, cpg, cpu]);
   const maxSales = Math.max(1, ...weeks.map((w) => w.sales));
 
   const stat = (label: string, value: string, color?: string) => (
@@ -38,6 +39,9 @@ export default function ProfitScreen() {
       {cpg == null ? (
         <Notice text="Add what you paid on your restocks (Stock → tap a restock) to see cost and profit." />
       ) : null}
+      {s.unitsSold > 0 && cpu == null ? (
+        <Notice text="Units were sold in this period but none of your unit restocks have a price, so profit can't be worked out. Enter 'You paid' next time you add units." />
+      ) : null}
 
       <View style={styles.rowStats}>
         {stat('Profit', s.profit == null ? '—' : usd(Math.round(s.profit * 100) / 100), s.profit != null && s.profit < 0 ? c.danger : c.ok)}
@@ -52,10 +56,12 @@ export default function ProfitScreen() {
         {[
           ['Bags taken', String(s.bagsSold)],
           ['Grams taken', grams(s.gramsSold)],
+          ['Units taken', String(s.unitsSold)],
           ['Money collected', usd(s.collected)],
-          ['From these bags, still owed', usd(s.stillOwed)],
+          ['From these sales, still owed', usd(s.stillOwed)],
           ['Average price per gram', s.pricePerGram == null ? '—' : `${usd(Math.round(s.pricePerGram * 100) / 100)}/g`],
           ['Your cost per gram', cpg == null ? '—' : `${usd(Math.round(cpg * 100) / 100)}/g`],
+          ['Your cost per unit', cpu == null ? '—' : usd(Math.round(cpu * 100) / 100)],
         ].map(([k, v], i, arr) => (
           <View key={k} style={[styles.kv, i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.line }]}>
             <Text style={t.muted}>{k}</Text>

@@ -2,14 +2,14 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { DateField } from '../../components/DateField';
-import { LiquidBag } from '../../components/LiquidBag';
+import { ItemIcon } from '../../components/UnitBox';
 import { Pegboard } from '../../components/Pegboard';
 import { Button, Chip, Field, Label, Notice, Page, Pill, Segmented, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
-import { bagProfit, costPerGram } from '../../lib/profit';
+import { bagProfit, costPerGram, costPerUnit } from '../../lib/profit';
 import { pickContact } from '../../lib/contacts';
 import { isReminderDue, openTextReminder, reminderDays, reminderMessage, reminderTemplate } from '../../lib/reminders';
-import { addDays, dueInfo, grams, parseAmount, shortDate, usd } from '../../lib/format';
+import { addDays, dueInfo, itemLabel, parseAmount, shortDate, usd } from '../../lib/format';
 import type { Bag } from '../../lib/types';
 import { monoFont, useColors } from '../../lib/theme';
 
@@ -35,9 +35,9 @@ export default function BagScreen() {
 function Hero({ bag, subtitle }: { bag: Bag; subtitle: string }) {
   return (
     <Pegboard framed={false} style={styles.hero}>
-      <LiquidBag grams={bag.grams} width={90} danger={bag.status === 'taken' && dueInfo(bag).tone === 'late'} />
+      <ItemIcon bag={bag} width={90} danger={bag.status === 'taken' && dueInfo(bag).tone === 'late'} />
       <View style={styles.heroInfo}>
-        <Text style={styles.heroG}>{grams(bag.grams)}</Text>
+        <Text style={styles.heroG}>{itemLabel(bag)}</Text>
         <Text style={styles.heroS}>{subtitle}</Text>
       </View>
     </Pegboard>
@@ -63,6 +63,7 @@ function useAction() {
 
 /* ---------- bag still on the board ---------- */
 function TakeForm({ bag }: { bag: Bag }) {
+  const isUnit = bag.item === 'unit';
   const c = useColors();
   const toast = useToast();
   const { people, takeBag, removeBag } = useBoard();
@@ -92,8 +93,8 @@ function TakeForm({ bag }: { bag: Bag }) {
       });
       toast(
         mode === 'paid'
-          ? `${personName} paid ${usd(p)}. ${grams(bag.grams)} came off your stock and the bag moved to History.`
-          : `${personName} owes ${usd(p)}. ${grams(bag.grams)} came off your stock and the bag moved to Owed.`,
+          ? `${personName} paid ${usd(p)}. ${itemLabel(bag)} came off your stock and moved to History.`
+          : `${personName} owes ${usd(p)}. ${itemLabel(bag)} came off your stock and moved to Owed.`,
       );
       router.back();
     });
@@ -123,7 +124,10 @@ function TakeForm({ bag }: { bag: Bag }) {
   const selected = people.find((p) => p.id === personId);
 
   const confirmRemove = () =>
-    Alert.alert('Take this bag off the board?', `The ${grams(bag.grams)} goes back to unbagged stock.`, [
+    Alert.alert(
+      isUnit ? 'Remove this unit from the box?' : 'Take this bag off the board?',
+      isUnit ? 'It will be deleted from the box.' : `The ${itemLabel(bag)} goes back to unbagged stock.`,
+      [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -131,16 +135,17 @@ function TakeForm({ bag }: { bag: Bag }) {
         onPress: () =>
           run(async () => {
             await removeBag(bag.id);
-            toast(`Removed the ${grams(bag.grams)} bag.`);
+            toast(isUnit ? 'Removed the unit from the box.' : `Removed the ${itemLabel(bag)} bag.`);
             router.back();
           }),
       },
-    ]);
+      ],
+    );
 
   return (
     <Page>
-      <Stack.Screen options={{ title: 'Bag on the board' }} />
-      <Hero bag={bag} subtitle={`${usd(bag.price)} · on the board`} />
+      <Stack.Screen options={{ title: isUnit ? 'Unit in the box' : 'Bag on the board' }} />
+      <Hero bag={bag} subtitle={`${usd(bag.price)} · ${isUnit ? 'in the box' : 'on the board'}`} />
       <Label>Who grabbed it?</Label>
       <View style={styles.wrap}>
         {people.map((p) => (
@@ -175,15 +180,16 @@ function TakeForm({ bag }: { bag: Bag }) {
       {mode === 'owes' ? <DateField label="Pay by" value={due} onChange={setDue} /> : null}
       <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="Optional" />
       {error ? <Notice text={error} tone="late" /> : null}
-      <Button title={`Mark as taken · removes ${grams(bag.grams)} from stock`} variant="primary" busy={busy} onPress={submit} />
-      <Button title="Edit grams or price" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
-      <Button title="Take bag off the board" variant="danger" onPress={confirmRemove} />
+      <Button title={`Mark as taken · removes ${itemLabel(bag)} from stock`} variant="primary" busy={busy} onPress={submit} />
+      <Button title={isUnit ? 'Edit price' : 'Edit grams or price'} onPress={() => router.push(`/edit-bag/${bag.id}`)} />
+      <Button title={isUnit ? 'Remove unit from the box' : 'Take bag off the board'} variant="danger" onPress={confirmRemove} />
     </Page>
   );
 }
 
 /* ---------- taken, still owed ---------- */
 function OwedBag({ bag }: { bag: Bag }) {
+  const isUnit = bag.item === 'unit';
   const t = useText();
   const toast = useToast();
   const { board, people, personName, markPaid, undoTake, setDueDate, markReminded } = useBoard();
@@ -207,7 +213,7 @@ function OwedBag({ bag }: { bag: Bag }) {
   const { busy, error, run } = useAction();
 
   const confirmUndo = () =>
-    Alert.alert('Undo this take?', `The bag goes back on the board and ${grams(bag.grams)} returns to your stock.`, [
+    Alert.alert('Undo this take?', isUnit ? 'The unit goes back in the box.' : `The bag goes back on the board and ${itemLabel(bag)} returns to your stock.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Undo take',
@@ -215,7 +221,7 @@ function OwedBag({ bag }: { bag: Bag }) {
         onPress: () =>
           run(async () => {
             await undoTake(bag.id);
-            toast(`Undone. ${grams(bag.grams)} is back on the board.`);
+            toast(isUnit ? 'Undone. The unit is back in the box.' : `Undone. ${itemLabel(bag)} is back on the board.`);
             router.back();
           }),
       },
@@ -288,7 +294,7 @@ function OwedBag({ bag }: { bag: Bag }) {
         }
       />
       <Button title="Edit bag" onPress={() => router.push(`/edit-bag/${bag.id}`)} />
-      <Button title="Undo take · put back on board" onPress={confirmUndo} />
+      <Button title={isUnit ? 'Undo take · put back in the box' : 'Undo take · put back on board'} onPress={confirmUndo} />
     </Page>
   );
 }
@@ -302,7 +308,7 @@ function PaidBag({ bag }: { bag: Bag }) {
   const { busy, error, run } = useAction();
   return (
     <Page>
-      <Stack.Screen options={{ title: 'Paid bag' }} />
+      <Stack.Screen options={{ title: bag.item === 'unit' ? 'Paid unit' : 'Paid bag' }} />
       <Hero bag={bag} subtitle={`${usd(bag.price)} · paid`} />
       {[
         ['Taken by', name],
@@ -338,7 +344,7 @@ function ProfitLine({ bag }: { bag: Bag }) {
   const t = useText();
   const c = useColors();
   const { stock } = useBoard();
-  const p = bagProfit(bag, costPerGram(stock));
+  const p = bagProfit(bag, costPerGram(stock), costPerUnit(stock));
   if (!p) return null;
   return (
     <View style={styles.kv}>

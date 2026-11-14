@@ -48,6 +48,8 @@ type BoardState = {
   updateStock: (id: string, fields: { grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
   deleteStock: (id: string) => Promise<void>;
   markReminded: (bagId: string) => Promise<void>;
+  addUnits: (count: number, price: number, cost: number | null, note: string) => Promise<void>;
+  saveUnitPrice: (price: number) => Promise<void>;
   addStock: (entry: { kind: 'restock' | 'adjust'; grams: number; cost: number | null; note: string; date: string }) => Promise<void>;
   savePresets: (presets: Preset[]) => Promise<void>;
   leaveBoard: () => Promise<void>;
@@ -62,8 +64,8 @@ function check<T>(res: { data: T; error: { message: string } | null }): T {
 }
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
-const toBag = (r: any): Bag => ({ ...r, grams: num(r.grams), price: num(r.price) });
-const toStock = (r: any): StockEntry => ({ ...r, grams: num(r.grams), cost: r.cost == null ? null : num(r.cost) });
+const toBag = (r: any): Bag => ({ ...r, item: r.item ?? 'grams', grams: num(r.grams), price: num(r.price) });
+const toStock = (r: any): StockEntry => ({ ...r, item: r.item ?? 'grams', grams: num(r.grams), cost: r.cost == null ? null : num(r.cost) });
 const toPreset = (r: any): Preset => ({ grams: num(r.grams), default_price: num(r.default_price) });
 
 export function BoardProvider({ children }: { children: ReactNode }) {
@@ -329,8 +331,9 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     },
 
     async updateBag(bagId, fields) {
+      const isUnit = bags.find((b) => b.id === bagId)?.item === 'unit';
       const update: Record<string, unknown> = {
-        grams: round1(fields.grams),
+        ...(isUnit ? {} : { grams: round1(fields.grams) }),
         price: fields.price,
         notes: fields.notes.trim() || null,
       };
@@ -360,6 +363,29 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     async deleteStock(id) {
       check(await supabase.from('stock_entries').delete().eq('id', id));
       await refresh('stock_entries');
+    },
+
+    async addUnits(count, price, cost, note) {
+      const id = requireBoard();
+      const rows = Array.from({ length: count }, () => ({ board_id: id, item: 'unit', grams: null, price }));
+      check(await supabase.from('bags').insert(rows));
+      check(
+        await supabase.from('stock_entries').insert({
+          board_id: id,
+          kind: 'restock',
+          item: 'unit',
+          grams: count,
+          cost,
+          note: note.trim() || null,
+        }),
+      );
+      await refresh('bags', 'stock_entries');
+    },
+
+    async saveUnitPrice(price) {
+      const id = requireBoard();
+      check(await supabase.from('boards').update({ unit_price: price }).eq('id', id));
+      await refresh('boards');
     },
 
     async markReminded(bagId) {

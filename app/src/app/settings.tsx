@@ -7,6 +7,7 @@ import { useBoard } from '../lib/board';
 import { useLock } from '../lib/lock';
 import { versionLabel } from '../lib/updates';
 import { addDays, parseAmount } from '../lib/format';
+import { DEFAULT_UNIT_PRICE } from '../lib/units';
 import { reminderDays, reminderMessage, reminderTemplate } from '../lib/reminders';
 import { supabase } from '../lib/supabase';
 import { monoFont, useColors } from '../lib/theme';
@@ -17,7 +18,8 @@ export default function Settings() {
   const toast = useToast();
   const { session } = useAuth();
   const lock = useLock();
-  const { board, members, presets, savePresets, saveReminderSettings, leaveBoard } = useBoard();
+  const { board, members, presets, savePresets, saveReminderSettings, saveUnitPrice, leaveBoard } = useBoard();
+  const [unitPrice, setUnitPrice] = useState(String(board?.unit_price ?? DEFAULT_UNIT_PRICE));
   const [prices, setPrices] = useState<Record<number, string>>(() =>
     Object.fromEntries(presets.map((p) => [p.grams, String(p.default_price)])),
   );
@@ -77,9 +79,12 @@ export default function Settings() {
       if (v == null || v < 0) return setError(`Enter a price for ${p.grams} g.`);
       next.push({ grams: p.grams, default_price: v });
     }
+    const up = parseAmount(unitPrice);
+    if (up == null || up < 0) return setError('Enter a price per unit.');
     setBusy(true);
     try {
       await savePresets(next);
+      if (up !== (board?.unit_price ?? DEFAULT_UNIT_PRICE)) await saveUnitPrice(up);
       toast('Preset prices saved.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save. Try again.');
@@ -106,6 +111,9 @@ export default function Settings() {
             />
           </View>
         ))}
+        <View style={{ width: '47%' }}>
+          <Field label="Each unit ($)" value={unitPrice} onChangeText={setUnitPrice} keyboardType="decimal-pad" mono />
+        </View>
       </View>
       {error ? <Notice text={error} tone="late" /> : null}
       <Button title="Save prices" variant="primary" busy={busy} onPress={save} />

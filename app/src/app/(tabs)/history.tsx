@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { LiquidBag } from '../../components/LiquidBag';
+import { ItemIcon } from '../../components/UnitBox';
 import { Button, Card, Page, Row, useText } from '../../components/ui';
 import { useBoard } from '../../lib/board';
-import { grams, shortDate, usd } from '../../lib/format';
+import { itemLabel, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
 
 export default function HistoryScreen() {
@@ -39,11 +39,11 @@ export default function HistoryScreen() {
         ) : (
           paid.map((b, i) => (
             <Row key={b.id} last={i === paid.length - 1} onPress={() => router.push(`/bag/${b.id}`)}>
-              <LiquidBag grams={b.grams} width={30} />
+              <ItemIcon bag={b} width={30} />
               <View style={{ flex: 1 }}>
                 <Text style={t.strong}>{personName(b.person_id)}</Text>
                 <Text style={t.muted}>
-                  {grams(b.grams)} · paid {b.paid_at ? shortDate(b.paid_at) : ''}
+                  {itemLabel(b)} · paid {b.paid_at ? shortDate(b.paid_at) : ''}
                 </Text>
               </View>
               <Text style={[t.mono, { color: c.ok }]}>{usd(b.price)}</Text>

@@ -4,7 +4,7 @@ import { Alert, Text, View } from 'react-native';
 import { Button, Card, Field, Label, Notice, Page, Pill, Row, useText, useToast } from '../../components/ui';
 import { useBoard } from '../../lib/board';
 import { pickContact } from '../../lib/contacts';
-import { dueInfo, grams, shortDate, usd } from '../../lib/format';
+import { dueInfo, itemLabel, shortDate, usd } from '../../lib/format';
 import { useColors } from '../../lib/theme';
 
 export default function PersonScreen() {
@@ -125,7 +125,7 @@ export default function PersonScreen() {
                 return (
                   <Row key={b.id} last={i === mine.length - 1} onPress={() => router.push(`/bag/${b.id}`)}>
                     <View style={{ flex: 1 }}>
-                      <Text style={t.mono}>{grams(b.grams)}</Text>
+                      <Text style={t.mono}>{itemLabel(b)}</Text>
                       <Text style={t.muted}>taken {b.taken_at ? shortDate(b.taken_at) : ''}</Text>
                     </View>
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>

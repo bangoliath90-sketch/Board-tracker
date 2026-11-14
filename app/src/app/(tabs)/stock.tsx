@@ -8,7 +8,8 @@ import { useColors } from '../../lib/theme';
 export default function StockScreen() {
   const c = useColors();
   const t = useText();
-  const { stock, totals } = useBoard();
+  const { stock: allStock, totals } = useBoard();
+  const stock = allStock.filter((s) => s.item !== 'unit');
 
   const box = (label: string, value: number) => (
     <View style={{ flex: 1, backgroundColor: c.surface, borderColor: c.line, borderWidth: 1, borderRadius: 14, padding: 10 }}>
