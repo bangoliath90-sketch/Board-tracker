@@ -35,6 +35,8 @@ type BoardState = {
   joinBoard: (code: string, displayName: string) => Promise<void>;
   hangBags: (grams: number, price: number, count: number) => Promise<void>;
   takeBag: (bagId: string, input: TakeInput) => Promise<{ personName: string }>;
+  /** Take several bags/units at once for one person. A null price keeps each item's own price. */
+  takeMany: (ids: string[], input: Omit<TakeInput, 'price'> & { price: number | null }) => Promise<{ personName: string; count: number }>;
   markPaid: (bagId: string) => Promise<void>;
   markUnpaid: (bagId: string) => Promise<void>;
   undoTake: (bagId: string) => Promise<void>;
@@ -196,6 +198,38 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     return boardIdRef.current;
   };
 
+  /** Find the chosen person, or add a new one, filling in their phone if it's missing. */
+  async function resolvePerson(input: Pick<TakeInput, 'personId' | 'newPersonName' | 'phone'>) {
+    const id = requireBoard();
+    let personId = input.personId;
+    let name = personId ? personName(personId) : '';
+    const phone = input.phone?.trim() || null;
+    if (personId && phone && !people.find((p) => p.id === personId)?.phone) {
+      check(await supabase.from('people').update({ phone }).eq('id', personId));
+    }
+    if (!personId) {
+      const newName = (input.newPersonName ?? '').trim();
+      if (!newName) throw new Error('Choose who grabbed it.');
+      const existing = people.find((p) => p.name.toLowerCase() === newName.toLowerCase());
+      if (existing) {
+        personId = existing.id;
+        name = existing.name;
+        if (phone && !existing.phone) check(await supabase.from('people').update({ phone }).eq('id', existing.id));
+      } else {
+        const row = check(
+          await supabase
+            .from('people')
+            .insert(phone ? { board_id: id, name: newName, phone } : { board_id: id, name: newName })
+            .select('id')
+            .single(),
+        );
+        personId = (row as { id: string }).id;
+        name = newName;
+      }
+    }
+    return { personId: personId as string, name };
+  }
+
   const value: BoardState = {
     status,
     error,
@@ -227,33 +261,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     },
 
     async takeBag(bagId, input) {
-      const id = requireBoard();
-      let personId = input.personId;
-      let name = personId ? personName(personId) : '';
-      const phone = input.phone?.trim() || null;
-      if (personId && phone && !people.find((p) => p.id === personId)?.phone) {
-        check(await supabase.from('people').update({ phone }).eq('id', personId));
-      }
-      if (!personId) {
-        const newName = (input.newPersonName ?? '').trim();
-        if (!newName) throw new Error('Choose who grabbed the bag.');
-        const existing = people.find((p) => p.name.toLowerCase() === newName.toLowerCase());
-        if (existing) {
-          personId = existing.id;
-          name = existing.name;
-          if (phone && !existing.phone) check(await supabase.from('people').update({ phone }).eq('id', existing.id));
-        } else {
-          const row = check(
-            await supabase
-              .from('people')
-              .insert(phone ? { board_id: id, name: newName, phone } : { board_id: id, name: newName })
-              .select('id')
-              .single(),
-          );
-          personId = (row as { id: string }).id;
-          name = newName;
-        }
-      }
+      const { personId, name } = await resolvePerson(input);
       const now = new Date().toISOString();
       const updated = check(
         await supabase
@@ -274,6 +282,32 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       await refresh('bags', 'people');
       if (!updated || updated.length === 0) throw new Error('Someone else already took this bag.');
       return { personName: name };
+    },
+
+    async takeMany(ids, input) {
+      if (!ids.length) throw new Error('Select at least one.');
+      const { personId, name } = await resolvePerson(input);
+      const now = new Date().toISOString();
+      const updated = check(
+        await supabase
+          .from('bags')
+          .update({
+            status: input.paid ? 'paid' : 'taken',
+            person_id: personId,
+            ...(input.price != null ? { price: input.price } : {}),
+            taken_at: now,
+            paid_at: input.paid ? now : null,
+            due_date: input.paid ? null : input.dueDate,
+            notes: input.notes.trim() || null,
+          })
+          .in('id', ids)
+          .eq('status', 'on_board')
+          .select('id'),
+      );
+      await refresh('bags', 'people');
+      const count = updated?.length ?? 0;
+      if (count === 0) throw new Error('Someone else already took these.');
+      return { personName: name, count };
     },
 
     async markPaid(bagId) {

@@ -17,6 +17,9 @@ type Props = {
   onDone: () => void;
   onReturn: () => Promise<void>;
   onLost: (reason: string) => Promise<void>;
+  /** Optional main action for the selection, e.g. "Take 5 units". */
+  takeLabel?: string;
+  onTake?: () => void;
 };
 
 /** Actions for several selected bags or units at once. */
@@ -65,10 +68,14 @@ export function SelectionBar(props: Props) {
           </View>
         </>
       ) : (
+        <>
+        {props.onTake ? (
+          <Button title={props.takeLabel ?? 'Take'} variant="primary" disabled={none} onPress={props.onTake} />
+        ) : null}
         <View style={styles.row}>
           <Button
             title={props.returnLabel}
-            variant="primary"
+            variant={props.onTake ? 'plain' : 'primary'}
             style={{ flex: 1.3 }}
             disabled={none}
             busy={busy === 'return'}
@@ -81,6 +88,7 @@ export function SelectionBar(props: Props) {
           />
           <Button title="Mark lost" variant="danger" style={{ flex: 1 }} disabled={none} onPress={() => setConfirmLoss(true)} />
         </View>
+        </>
       )}
       {error ? <Text style={{ color: c.danger }}>{error}</Text> : null}
       <Button title="Done" onPress={props.onDone} />

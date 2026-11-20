@@ -76,6 +76,7 @@ function Navigation() {
           <Stack.Screen name="edit-bag/[id]" options={{ presentation: 'modal', title: 'Edit bag' }} />
           <Stack.Screen name="profit" options={{ title: 'Profit' }} />
           <Stack.Screen name="add-units" options={{ presentation: 'modal', title: 'Add units' }} />
+          <Stack.Screen name="take-units" options={{ presentation: 'modal', title: 'Take units' }} />
         </Stack.Protected>
       </Stack>
       {busy ? (

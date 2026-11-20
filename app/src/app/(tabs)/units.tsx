@@ -70,6 +70,12 @@ export default function UnitsScreen() {
           count={n}
           summary={`${n} unit${n === 1 ? '' : 's'} · ${usd(picked.reduce((s, u) => s + u.price, 0))}`}
           allSelected={n === inBox.length && n > 0}
+          takeLabel={n ? `Take ${n} unit${n === 1 ? '' : 's'} · ${usd(picked.reduce((s, u) => s + u.price, 0))}` : 'Take'}
+          onTake={() => {
+            const ids = picked.map((u) => u.id).join(',');
+            finish();
+            router.push(`/take-units?ids=${ids}`);
+          }}
           returnLabel="Remove from box"
           returnMessage={`Take ${n} unit${n === 1 ? '' : 's'} out of the box? They're removed without being recorded as a loss.`}
           onSelectAll={() => setSelected(new Set(inBox.map((u) => u.id)))}
